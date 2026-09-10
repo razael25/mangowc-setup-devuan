@@ -63,7 +63,7 @@ Singleton {
     // restart and a config reload (which resets setoption values). No
     // file = config.conf's values, which these defaults mirror; nothing
     // is pushed to the compositor until the user has touched a toggle.
-    property bool blur: true
+    property bool blur: false
     property bool shadows: true
     property bool animations: true
     property bool effectsFromFile: false

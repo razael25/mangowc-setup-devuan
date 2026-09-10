@@ -176,9 +176,10 @@ Every bind in `config.conf` has a comment above it — that's what
 overview; four fingers carry the focused window along. The bottom-left
 hot corner opens the overview too.
 
-**Effects:** shadows sit under floating windows and the bar's popups, and
-blur frosts what's behind those popups. Tiled windows stay flat and opaque
-so it's quick on integrated graphics. Flip any of it in the layout picker.
+**Effects:** shadows sit under floating windows and the bar's popups. Blur
+is off by default; turn it on in the layout picker and it frosts what's
+behind those popups. Tiled windows stay flat and opaque so it's quick on
+integrated graphics. Every one of these is a toggle in the picker.
 `~/QUICKSTART-mango.md` lands in your home folder for the first few days.
 
 ---
