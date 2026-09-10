@@ -3,7 +3,7 @@ import Quickshell
 import Quickshell.Services.Pipewire
 
 // Default sink volume. Scroll to adjust, click to mute, right click for
-// pavucontrol (floats via the bspwmrc rule).
+// the volume popup (slider, output picker, pavucontrol).
 BarModule {
     id: root
 
@@ -32,7 +32,7 @@ BarModule {
 
     onClicked: mouse => {
         if (mouse.button === Qt.RightButton)
-            Quickshell.execDetached(["pavucontrol"])
+            popup.visible = !popup.visible
         else if (audio)
             audio.muted = !audio.muted
     }
@@ -41,5 +41,10 @@ BarModule {
             audio.muted = false
             audio.volume = Math.max(0, Math.min(1, audio.volume + dir * 0.02))
         }
+    }
+
+    VolumePopup {
+        id: popup
+        anchorItem: root
     }
 }

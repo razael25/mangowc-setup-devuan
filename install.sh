@@ -107,7 +107,7 @@ PACKAGES_BAR=(
 
 PACKAGES_WAYLAND=(
     grim slurp wl-clipboard cliphist
-    wlr-randr
+    wlr-randr swayidle wlopm
     xdg-desktop-portal-wlr xdg-desktop-portal-gtk
 )
 

@@ -12,6 +12,7 @@ Media Media.qml
 MediaPopup MediaPopup.qml
 Metrics Metrics.qml
 Volume Volume.qml
+VolumePopup VolumePopup.qml
 Network Network.qml
 Tray Tray.qml
 Clock Clock.qml
@@ -26,6 +27,7 @@ Updates Updates.qml
 Bell Bell.qml
 Popout Popout.qml
 TweakSlider TweakSlider.qml
+TogglePill TogglePill.qml
 Weather Weather.qml
 WeatherPopup WeatherPopup.qml
 NotifyPopup NotifyPopup.qml

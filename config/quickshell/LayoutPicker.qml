@@ -9,8 +9,9 @@ import Quickshell.Io
 // Middle: live tweaks — inner window gap (setoption, persisted to the
 // mango-gaps state file Wm.qml re-applies on start), master width and
 // count (relative dispatches; tracked in Wm.qml, dimmed in layouts that
-// ignore them). Bottom: bar height/scale, persisted to the state files
-// Theme.qml watches.
+// ignore them), then blur / shadows / animations toggles (setoption,
+// persisted to mango-effects). Bottom: bar height/scale, persisted to
+// the state files Theme.qml watches.
 Popout {
     id: root
 
@@ -135,6 +136,28 @@ Popout {
             persistFn: v => {}   // session state, nothing to persist
             enabled: Wm.layouts[Wm.layoutIndex].nmaster
             opacity: enabled ? 1 : 0.35
+        }
+
+        SectionLabel { text: "Effects" }
+
+        // live through setoption, persisted to mango-effects (Wm.qml)
+        Grid {
+            id: fxGrid
+            width: parent.width
+            columns: 3
+            spacing: 4
+
+            Repeater {
+                model: [
+                    { icon: "󰂲", label: "Blur", active: Wm.blur,
+                      run: () => Wm.setEffect("blur", !Wm.blur) },
+                    { icon: "󰘷", label: "Shadows", active: Wm.shadows,
+                      run: () => Wm.setEffect("shadows", !Wm.shadows) },
+                    { icon: "󰐊", label: "Animate", active: Wm.animations,
+                      run: () => Wm.setEffect("animations", !Wm.animations) }
+                ]
+                TogglePill { width: (fxGrid.width - 8) / 3 }
+            }
         }
 
         SectionLabel { text: "Bar" }

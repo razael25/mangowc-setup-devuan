@@ -73,7 +73,9 @@ PanelWindow {
         width: root.cardWidth
         height: root.cardHeight
         radius: 12
-        color: Theme.bg
+        // a touch translucent while mango blurs behind layers, so the
+        // card frosts over the desktop; solid again when blur is off
+        color: Wm.blur ? Qt.alpha(Theme.bg, 0.86) : Theme.bg
         border.width: 1
         border.color: Qt.alpha(Theme.accent, 0.4)
 

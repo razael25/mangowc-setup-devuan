@@ -58,6 +58,31 @@ Singleton {
     property bool follow: false     // no follow toggle on mango; kept for parity
     function toggleFollow() {}
 
+    // effects: blur / shadows / animations, flipped live by the picker
+    // (setoption) and persisted to mango-effects so they survive a bar
+    // restart and a config reload (which resets setoption values). No
+    // file = config.conf's values, which these defaults mirror; nothing
+    // is pushed to the compositor until the user has touched a toggle.
+    property bool blur: true
+    property bool shadows: true
+    property bool animations: true
+    property bool effectsFromFile: false
+    function applyEffects() {
+        if (!effectsFromFile) return
+        dispatch("setoption,blur," + (blur ? 1 : 0))
+        dispatch("setoption,shadows," + (shadows ? 1 : 0))
+        dispatch("setoption,animations," + (animations ? 1 : 0))
+    }
+    function setEffect(name, on) {
+        root[name] = on
+        effectsFromFile = true
+        applyEffects()
+        Quickshell.execDetached(["sh", "-c",
+            "printf 'blur=%s\\nshadows=%s\\nanimations=%s\\n' "
+            + (blur ? 1 : 0) + " " + (shadows ? 1 : 0) + " " + (animations ? 1 : 0)
+            + " > '" + Theme.configDir + "/mango-effects'"])
+    }
+
     function setLayout(i) { dispatch("setlayout," + layoutIds[i]) }
     function cycleLayout(dir) {
         setLayout(((layoutIndex + dir) % layouts.length + layouts.length) % layouts.length)
@@ -102,6 +127,22 @@ Singleton {
         onLoaded: {
             const v = parseInt(text())
             if (!isNaN(v)) { root.gaps = v; root.applyGaps(v) }
+        }
+    }
+
+    // effects state file, same lifecycle as the gaps one
+    FileView {
+        path: Theme.configDir + "/mango-effects"
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: {
+            for (const line of text().split("\n")) {
+                const [k, v] = line.split("=")
+                if (["blur", "shadows", "animations"].indexOf(k) >= 0)
+                    root[k] = (v ?? "").trim() === "1"
+            }
+            root.effectsFromFile = true
+            root.applyEffects()
         }
     }
 

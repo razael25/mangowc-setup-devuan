@@ -28,11 +28,26 @@ does this), or `scripts/bar restart|log` which handles the `-p` flag.
   master width / count via the relative
   `setmfact` / `incnmaster` dispatches, tracked in Wm.qml since mango
   exposes no getter. Table in Wm.qml mirrors `src/layout/layout.h`.
+  Effects toggles (blur / shadows / animations) go through
+  `setoption` and persist to `mango-effects`; with no file the bar
+  pushes nothing and config.conf's values stand, so Wm.qml's defaults
+  mirror config.conf. `mango-reload` re-applies these after the gaps.
+- `Popout.qml` — the card goes slightly translucent while blur is on
+  (mango's `blur_layer` frosts what's behind it), solid when it's off.
+- `TogglePill.qml` — the quick-settings pill, shared by the command
+  menu and the picker's Effects row.
 - `Sys.qml` — caps lock read from `/sys/class/leds/*capslock`, popups
   always card-only (`composited: false`).
 - `Commands.qml` — keep-awake is a `systemd-inhibit --what=idle` holder
-  process; night light is wlsunset; the updates terminal is kitty.
+  process (swayidle watches logind for idle inhibitors, so this also
+  keeps the monitor from powering down); night light is wlsunset; the
+  updates terminal is kitty; screen off is `wlopm --off '*'`, any input
+  wakes it.
 - `Screenshot.qml` — `scripts/screenshot` (grim + slurp, clipboard).
+- `VolumePopup.qml` — right-click on Volume: slider plus a sink picker
+  (every PipeWire output, click to make it the default) and a
+  pavucontrol row. Reads and writes through Quickshell's Pipewire
+  service, so it follows changes made anywhere else.
 - Tail of `scripts/wallpaper-theme` — mango: writes `theme.conf`
   (focus/border/urgent/root colours, sourced by config.conf) and
   `reload_config`; swaybg replaces the wallpaper and the config.conf

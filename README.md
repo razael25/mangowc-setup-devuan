@@ -79,6 +79,7 @@ Everything else is stock Debian:
 | `dunst`                       | Notifications (layer-shell native)   |
 | `grim` + `slurp`              | Screenshots                          |
 | `cliphist` + `wl-clipboard`   | Clipboard history                    |
+| `swayidle` + `wlopm`          | Monitor power-off after 15 min idle  |
 | `xdg-desktop-portal-wlr/gtk`  | Screen sharing, file dialogs         |
 | `kitty`                       | Terminal (via butterscripts)         |
 | `thunar` + plugins            | File manager                         |
@@ -104,16 +105,18 @@ single `mmsg watch` stream — no polling, no patch — and clicks go back throu
 | Layout      | layout + tweaks picker   | (empty bar: same)       | cycle layouts  |
 | Media       | play / pause             | now-playing popup       | prev / next    |
 | Weather     | 3-day forecast           | location / units        | —              |
-| Volume      | mute                     | pavucontrol             | ±2%            |
+| Volume      | mute                     | volume popup: slider, output picker, pavucontrol | ±2% |
 | Network     | network app (Wi-Fi, VPN, Bluetooth) | nm-connection-editor | —  |
 | Clock       | calendar                 | —                       | —              |
 | Screenshot  | region                   | full screen             | —              |
 | Commands    | command menu             | —                       | —              |
 
 The **layout picker** shows all fourteen mango layouts as glyph tiles, plus
-live sliders for gaps, master width and master count, and the bar's own
-height and scale. The **command menu** holds the toggles that don't earn a
-bar module: power profile, keep-awake, night light, DND, a pomodoro.
+live sliders for gaps, master width and master count, toggles for blur,
+shadows and animations (they change under your cursor and stick), and the
+bar's own height and scale. The **command menu** holds the toggles that
+don't earn a bar module: power profile, keep-awake, night light, DND, a
+pomodoro, screen off.
 
 Details in [`config/quickshell/README.md`](config/quickshell/README.md).
 
@@ -137,6 +140,7 @@ Super is the mod key. Same muscle memory as the other setups.
 | Key Combo              | Action                                |
 |------------------------|----------------------------------------|
 | `Super + Return`       | Terminal (kitty)                       |
+| `Super + \``           | Drop-down terminal (scratchpad)        |
 | `Super + Space`        | App launcher (rofi)                    |
 | `Super + /`            | Keybind cheatsheet                     |
 | `Super + Q`            | Close window                           |
@@ -154,16 +158,27 @@ Super is the mod key. Same muscle memory as the other setups.
 | `Super + Shift + H/J/K/L` or arrows | Swap window               |
 | `Super + Ctrl + ←/→`   | Master width                           |
 | `Super + Ctrl + ↑/↓`   | Master count                           |
+| `Super + , / .`        | Focus previous / next monitor          |
+| `Super + Shift + , / .`| Send window to previous / next monitor |
+| `Super + scroll`       | Walk the tags                          |
 | `Super + 1–9/0/-/=`    | View tag 1–12                          |
 | `Super + Shift + 1–9/0/-/=` | Send window to tag 1–12           |
 | `Super + Shift + P`    | Wallpaper picker                       |
 | `Super + Shift + M`    | Command menu                           |
 | `Super + Shift + N`    | Network app                            |
-| `Super + Shift + L`    | Layout / tweaks picker                 |
+| `Super + Shift + T`    | Layout / tweaks picker                 |
 | `Super + S` / `Super + Shift + S` | Screenshot full / region (to `~/Screenshots`) |
 
 Every bind in `config.conf` has a comment above it — that's what
 `Super + /` reads, so add a bind, add a comment, and the cheatsheet knows.
+
+**Touchpad:** three fingers swipe through the tags, three up for the
+overview; four fingers carry the focused window along. The bottom-left
+hot corner opens the overview too.
+
+**Effects:** shadows sit under floating windows and the bar's popups, and
+blur frosts what's behind those popups. Tiled windows stay flat and opaque
+so it's quick on integrated graphics. Flip any of it in the layout picker.
 `~/QUICKSTART-mango.md` lands in your home folder for the first few days.
 
 ---
@@ -174,6 +189,7 @@ Every bind in `config.conf` has a comment above it — that's what
 ~/.config/mango/
 ├── config.conf           # everything: look, input, layouts, autostart, binds, rules
 ├── theme.conf            # border colors, written by the wallpaper picker (sourced)
+├── mango-gaps, mango-effects  # picker state, re-applied by the bar on start
 ├── scripts/
 │   ├── bar               # quickshell helper: restart | log | ipc …
 │   ├── mango-ipc         # mmsg wrapper that finds the socket
@@ -188,6 +204,18 @@ Every bind in `config.conf` has a comment above it — that's what
 ├── polybar/colors.ini    # the live palette the bar watches (name is historical)
 └── wallpaper/
 ```
+
+---
+
+## 🖥️ Monitors, Scaling, Refresh Rate
+
+Nothing to configure for most setups: mango picks each monitor's preferred
+mode (normally its highest refresh rate) at scale 1. When you do need
+more, one `monitorrule` line per output in `config.conf` sets resolution,
+refresh, position, fractional scale and adaptive sync — two commented
+templates are waiting in the `outputs` section, and `wlr-randr` lists the
+names and modes to fill in. Tearing is allowed for fullscreen clients that
+ask for it (games), nothing else.
 
 ---
 

@@ -4,7 +4,7 @@ import Quickshell.Io
 
 // Command menu: quick actions that have NO other bar surface — power
 // profile, keep-awake, mic mute, night light, bluetooth power, brightness
-// (laptops), pomodoro, updates, power menu. The rule: the bar shows
+// (laptops), pomodoro, updates, screen off, power menu. The rule: the bar shows
 // state, this menu holds actions that would otherwise each need a whole
 // new bar widget. Stateful glanceable things (volume, network, DND,
 // media) keep their own modules and never appear here.
@@ -159,65 +159,6 @@ BarModule {
         }
     }
 
-    // filled = on; right-click launches modelData.alt (full external tool)
-    component TogglePill: Rectangle {
-        id: pill
-        required property var modelData
-        readonly property bool on: modelData.active === true
-
-        width: (parent.width - 6) / 2
-        height: 40
-        radius: 12
-        color: on ? Theme.selbg
-             : pillMa.containsMouse ? Qt.alpha(Theme.fg, 0.12)
-             : Qt.alpha(Theme.fg, 0.05)
-
-        Behavior on color { ColorAnimation { duration: 120 } }
-
-        Row {
-            anchors.centerIn: parent
-            spacing: 7
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: pill.modelData.icon
-                color: pill.modelData.alert ? Theme.red
-                     : pill.on ? Theme.selfg : Theme.cyan
-                font.family: Theme.fontFamily
-                font.pixelSize: 15
-                Behavior on color { ColorAnimation { duration: 250 } }
-            }
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: pill.modelData.label
-                color: pill.on ? Theme.selfg : Qt.alpha(Theme.fg, 0.9)
-                font.family: Theme.fontFamily
-                font.pixelSize: 12
-                font.bold: pill.on
-            }
-        }
-
-        MouseArea {
-            id: pillMa
-            anchors.fill: parent
-            hoverEnabled: true
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
-            onClicked: m => {
-                if (m.button === Qt.RightButton) {
-                    if (pill.modelData.alt) {           // external tool
-                        menu.visible = false
-                        Quickshell.execDetached(pill.modelData.alt)
-                    } else if (pill.modelData.altFn) {  // in-panel action
-                        pill.modelData.altFn()
-                    }
-                } else {
-                    pill.modelData.run()
-                }
-            }
-            onWheel: w => pill.modelData.onScroll?.(w.angleDelta.y > 0 ? 1 : -1)
-        }
-    }
-
     component CommandRow: Rectangle {
         id: rowRect
         required property var modelData
@@ -335,7 +276,7 @@ BarModule {
                           onScroll: dir => root.nudgePomo(dir),
                           run: () => root.togglePomodoro() }
                     ]
-                    TogglePill {}
+                    TogglePill { closeFn: () => menu.visible = false }
                 }
             }
 
@@ -367,6 +308,8 @@ BarModule {
                       run: () => Quickshell.execDetached([Theme.configDir + "/scripts/help"]) },
                     { icon: "󰑓", label: "Restart bar",
                       run: () => Quickshell.execDetached([Theme.configDir + "/scripts/bar", "restart"]) },
+                    { icon: "󰌢", label: "Screen off",
+                      run: () => Quickshell.execDetached(["wlopm", "--off", "*"]) },
                     { icon: "󰐥", label: "Power menu",
                       run: () => Quickshell.execDetached([Theme.configDir + "/scripts/power"]) }
                 ]
