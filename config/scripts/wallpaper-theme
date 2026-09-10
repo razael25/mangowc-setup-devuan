@@ -263,7 +263,7 @@ fi
 #    re-themes live via colors.ini.
 pkill -x dunst 2>/dev/null || true
 dunst -config "$CONFIG_DIR/dunst/dunstrc" >/dev/null 2>&1 9>&- &
-"$CONFIG_DIR/scripts/mango-ipc" dispatch reload_config >/dev/null 2>&1 || true
+"$CONFIG_DIR/scripts/mango-reload" >/dev/null 2>&1 || true
 
 sleep 0.5
 notify-send -a "Wallpaper" -t 2500 "Wallpaper theme" "Palette from $(basename "$IMG")"

@@ -18,8 +18,14 @@ does this), or `scripts/bar restart|log` which handles the `-p` flag.
 - `Bar.qml` — no Follow module (mango has no window-follow toggle).
 - `LayoutPicker.qml` — the fourteen mango layouts as glyph tiles
   (`setlayout,<name>`); inner gap via `setoption,gappih/gappiv`
-  (persisted to `mango-gaps`, re-applied by Wm.qml on start and after a
-  config reload resets it); master width / count via the relative
+  (persisted to `mango-gaps`, re-applied by Wm.qml on start); outer gaps
+  via `setoption,gappoh/gappov`, always equal to the bar's edge inset
+  (`Theme.edgeInset`, 8px scaled by `Theme.autoScale` — 1.0 at 1080p,
+  1.33 at 1440p, 2.0 at unscaled 4K) so windows float like the bar; a
+  config reload resets both to config.conf, so `scripts/mango-reload`
+  (Super+Shift+r, wallpaper-theme) reloads and then calls the `wm`
+  IpcHandler in shell.qml to push them back;
+  master width / count via the relative
   `setmfact` / `incnmaster` dispatches, tracked in Wm.qml since mango
   exposes no getter. Table in Wm.qml mirrors `src/layout/layout.h`.
 - `Sys.qml` — caps lock read from `/sys/class/leds/*capslock`, popups

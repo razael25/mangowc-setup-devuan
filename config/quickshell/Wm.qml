@@ -63,9 +63,20 @@ Singleton {
         setLayout(((layoutIndex + dir) % layouts.length + layouts.length) % layouts.length)
     }
     function applyGaps(v) {
-        // "window gap" = inner gaps; outer gaps stay as config.conf sets them
+        // "window gap" = inner gaps
         dispatch("setoption,gappih," + v)
         dispatch("setoption,gappiv," + v)
+        applyOuterGaps()
+    }
+    // outer gaps = the bar's edge inset (Theme.edgeInset, scaled to the
+    // screen), so windows float off the edges exactly like the bar does
+    function applyOuterGaps() {
+        dispatch("setoption,gappoh," + Theme.edgeInset)
+        dispatch("setoption,gappov," + Theme.edgeInset)
+    }
+    Connections {
+        target: Theme
+        function onEdgeInsetChanged() { root.applyOuterGaps() }
     }
     function setGaps(v) { gaps = v; applyGaps(v) }
     function setMfact(pct) {
@@ -82,7 +93,8 @@ Singleton {
     }
 
     // gaps state file: written by the picker slider, applied on bar start
-    // (a config reload resets setoption values — re-applied then too)
+    // (a config reload resets setoption values; scripts/mango-reload asks
+    // for a re-apply through the "wm" IpcHandler in shell.qml)
     FileView {
         path: Theme.configDir + "/mango-gaps"
         watchChanges: true

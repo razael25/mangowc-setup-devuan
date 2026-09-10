@@ -23,12 +23,14 @@ PanelWindow {
     Rectangle {
         id: panel
         anchors.fill: parent
-        anchors.topMargin: 8
-        anchors.leftMargin: 8
-        anchors.rightMargin: 8
-        anchors.bottomMargin: 2
+        // inset from the screen edges; the gap below comes from mango's
+        // outer gaps (same value), so the bar and windows share one margin
+        anchors.topMargin: Theme.edgeInset
+        anchors.leftMargin: Theme.edgeInset
+        anchors.rightMargin: Theme.edgeInset
+        anchors.bottomMargin: 0
 
-        radius: 10
+        radius: Theme.barRadius
         color: Qt.alpha(Theme.bg, 0.94)
         border.width: 1
         border.color: Qt.alpha(Theme.accent, 0.35)

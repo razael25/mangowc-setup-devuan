@@ -60,14 +60,30 @@ Singleton {
 
     readonly property string fontFamily: "JetBrainsMono Nerd Font"
 
-    // In-bar elements follow the scale slider; popups stay fixed.
-    // barHeight is a floor: the window grows when scaled modules
-    // (26px at 1.0, +12px margins/border) outgrow it.
-    readonly property real barScale: barUserScale
+    // Resolution-aware base scale from the first output's logical height:
+    // 1.0 at 1080p, 1.33 at 1440p, 2.0 at unscaled 4K. An output scale set
+    // in mango (the proper hi-dpi fix) shrinks the logical height, so this
+    // stays at 1.0 there and nothing is scaled twice.
+    readonly property real autoScale: {
+        const s = Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+        const h = s ? s.height : 1080
+        return Math.min(Math.max(h / 1080, 0.75), 2.5)
+    }
+
+    // The bar's inset from the screen edges. Wm.qml sets mango's outer
+    // gaps to the same value so windows float with the same margin.
+    readonly property int edgeInset: Math.round(8 * autoScale)
+    // matches border_radius in config.conf
+    readonly property int barRadius: 8
+
+    // In-bar elements follow autoScale × the scale slider; popups stay
+    // fixed. barHeight is a floor: the window grows when scaled modules
+    // (26px at 1.0, + inset above + 8px padding) outgrow it.
+    readonly property real barScale: autoScale * barUserScale
     readonly property int fontSize: Math.round(13 * barScale)
     readonly property int iconSize: Math.round(15 * barScale)
     readonly property int moduleHeight: Math.round(26 * barScale)
-    readonly property int effectiveBarHeight: Math.max(barHeight, moduleHeight + 12)
+    readonly property int effectiveBarHeight: Math.max(barHeight, moduleHeight + edgeInset + 8)
 
     FileView {
         path: root.configDir + "/bar-height"
