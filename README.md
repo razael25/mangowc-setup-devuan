@@ -242,6 +242,13 @@ cross for a window manager.
 | `libscenefx-0.4`  | 0.4.1   | The scenefx series for wlroots 0.19                |
 | `mangowc`         | 0.14.4  | Last mango on wlroots 0.19 / scenefx 0.4; 0.15.0 moved to 0.20 |
 
+**"But scenefx 0.5 is out."** It is, and it's the same wall one layer up.
+scenefx tracks wlroots one to one — its build file requires wlroots 0.20
+and refuses anything older — and mango pins the pair together: 0.14.x
+asks for the scenefx 0.4 API by name, 0.15+ for 0.5. So these aren't
+three separate version choices. There's one choice, wlroots 0.19, and the
+other two follow from it.
+
 0.14.4 is the bugfix end of its line — a known-good snapshot, frozen the
 way everything on Debian stable is frozen. It won't get upstream's newer
 features (HDR, window groups, the GNOME-style switcher, configurable tag
