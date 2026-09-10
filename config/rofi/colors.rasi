@@ -1,0 +1,16 @@
+/* Generated from wallpaper: butterhead1.png */
+
+* {
+    bg:          #17171c;
+    fg:          #d2cbbc;
+    accent:      #d88c79;
+    accent-2:    #9499d1;
+    border:      #d88c79;
+    urgent:      #cf9181;
+    selected-fg: #d2cbbc;
+    entry-fg:    #9499d1;
+    prompt-fg:   #d88c79;
+    header:      #9499d1;
+
+    background-color: @bg;
+}

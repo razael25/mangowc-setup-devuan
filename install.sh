@@ -1,0 +1,302 @@
+#!/bin/bash
+
+# MangoWC Setup Installer
+# Based on JustAGuy Linux Sway Setup
+
+set -e
+
+# Command line options
+ONLY_CONFIG=false
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --only-config)
+            ONLY_CONFIG=true
+            shift
+            ;;
+        --help)
+            echo "Usage: $0 [OPTIONS]"
+            echo "  --only-config      Only copy config files (skip packages)"
+            echo "  --help            Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+# Paths
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_DIR="$HOME/.config/mango"
+TEMP_DIR="/tmp/mango_$$"
+LOG_FILE="$HOME/mango-install.log"
+
+# Logging and cleanup
+exec > >(tee -a "$LOG_FILE") 2>&1
+trap 'rm -rf "$TEMP_DIR"' EXIT
+
+# Colors
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+die() { echo -e "${RED}ERROR: $*${NC}" >&2; exit 1; }
+warn() { echo -e "${YELLOW}WARNING: $*${NC}" >&2; }
+msg() { echo -e "${CYAN}$*${NC}"; }
+
+
+# Package names target Debian 13 (trixie); newer releases (forky/sid) and Ubuntu differ.
+# mangowc itself comes from butterrepo: it needs wlroots 0.19 + scenefx 0.4, which
+# trixie does not ship, and butterrepo carries all three as .debs.
+if [ "$ONLY_CONFIG" = false ]; then
+    . /etc/os-release 2>/dev/null || die "Cannot read /etc/os-release to verify OS"
+    case " $ID ${ID_LIKE:-} " in
+        *" ubuntu "*) die "Unsupported OS: ${PRETTY_NAME:-unknown}. Ubuntu-based systems are not supported." ;;
+    esac
+    DEBIAN_BASE=$(cat /etc/debian_version 2>/dev/null || true)
+    case "$DEBIAN_BASE" in
+        13|13.*) ;;
+        *) die "Unsupported OS: ${PRETTY_NAME:-unknown}. This installer requires a Debian 13 (trixie) base (found: ${DEBIAN_BASE:-no /etc/debian_version})." ;;
+    esac
+fi
+
+# Banner
+clear
+echo -e "${CYAN}"
+echo " +-+-+-+-+-+-+-+-+-+-+-+-+ "
+echo " |M|a|n|g|o| |S|e|t|u|p|  | "
+echo " +-+-+-+-+-+-+-+-+-+-+-+-+ "
+echo " |W|a|y|l|a|n|d| |W|M|    | "
+echo " +-+-+-+-+-+-+-+-+-+-+-+-+ "
+echo -e "${NC}\n"
+
+read -p "Install MangoWC? (y/n) " -n 1 -r
+echo
+[[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+
+# Update system
+if [ "$ONLY_CONFIG" = false ]; then
+    msg "Updating system..."
+    sudo apt-get update && sudo apt-get upgrade -y
+
+    # Add butterrepo for mangowc (+ wlroots 0.19 / scenefx 0.4), quickshell and rofi
+    msg "Checking butterrepo..."
+    wget -qO- "https://justaguy.dev/drew/butterscripts/raw/branch/main/setup/add_butterrepo.sh" | bash
+else
+    msg "Skipping system update (--only-config mode)"
+fi
+
+# Package groups for better organization
+PACKAGES_CORE=(
+    mangowc xwayland swaybg
+)
+
+# quickshell pulls its qml6 modules in through Recommends
+PACKAGES_BAR=(
+    quickshell rofi dunst libnotify-bin
+    pamixer playerctl brightnessctl wlsunset power-profiles-daemon
+    network-manager-gnome
+)
+
+PACKAGES_WAYLAND=(
+    grim slurp wl-clipboard cliphist
+    wlr-randr
+    xdg-desktop-portal-wlr xdg-desktop-portal-gtk
+)
+
+PACKAGES_UI=(
+    nwg-look xsettingsd lxpolkit
+)
+
+PACKAGES_FILE_MANAGER=(
+    thunar thunar-archive-plugin thunar-volman
+    gvfs-backends gvfs-fuse dialog mtools smbclient cifs-utils unzip
+)
+
+PACKAGES_AUDIO=(
+    pavucontrol pulsemixer pipewire-audio
+)
+
+PACKAGES_UTILITIES=(
+    avahi-daemon acpi acpid upower
+    fd-find xdg-user-dirs-gtk
+    eog nwg-displays
+    gawk curl wget
+)
+
+PACKAGES_FONTS=(
+    fonts-recommended fonts-font-awesome fonts-noto-color-emoji
+)
+
+# Install packages by group
+if [ "$ONLY_CONFIG" = false ]; then
+    msg "Installing MangoWC (from butterrepo)..."
+    sudo apt-get install -y "${PACKAGES_CORE[@]}" || die "Failed to install core packages"
+
+    msg "Installing bar and desktop shell..."
+    sudo apt-get install -y "${PACKAGES_BAR[@]}" || die "Failed to install bar packages"
+
+    msg "Installing Wayland components..."
+    sudo apt-get install -y "${PACKAGES_WAYLAND[@]}" || die "Failed to install Wayland packages"
+
+    msg "Installing UI components..."
+    sudo apt-get install -y "${PACKAGES_UI[@]}" || die "Failed to install UI packages"
+
+    msg "Installing file manager..."
+    sudo apt-get install -y "${PACKAGES_FILE_MANAGER[@]}" || die "Failed to install file manager"
+
+    msg "Installing audio support..."
+    sudo apt-get install -y "${PACKAGES_AUDIO[@]}" || die "Failed to install audio packages"
+
+    msg "Installing system utilities..."
+    sudo apt-get install -y "${PACKAGES_UTILITIES[@]}" || die "Failed to install utilities"
+
+    sudo apt-get install -y firefox-esr 2>/dev/null || msg "Note: firefox-esr not available, skipping..."
+
+    msg "Installing fonts..."
+    sudo apt-get install -y "${PACKAGES_FONTS[@]}" || die "Failed to install fonts"
+
+    # Enable services
+    sudo systemctl enable avahi-daemon acpid
+
+    # GPU access. scenefx (mango's renderer) opens the render node directly at
+    # startup and has no fallback if that fails. logind normally grants the
+    # active session an ACL on it, but that can land a moment after the
+    # session starts; the render group makes access unconditional.
+    if ! id -nG "$USER" | grep -qw render; then
+        msg "Adding $USER to the render group (GPU render node access)..."
+        sudo usermod -aG render "$USER"
+    fi
+
+    # Seat management. mango talks to the seat through libseat, which prefers
+    # a running seatd over logind. With a display manager (lightdm) the seat
+    # already belongs to logind, and two seat managers fighting over the GPU
+    # leaves mango unable to become DRM master (blank session, then a hung
+    # greeter). Nothing here needs seatd; make sure it isn't running.
+    if systemctl is-active --quiet seatd 2>/dev/null; then
+        warn "seatd is running alongside logind — disabling it (mango uses logind for the seat)"
+        sudo systemctl disable --now seatd
+    fi
+else
+    msg "Skipping package installation (--only-config mode)"
+fi
+
+# Handle existing config
+if [ -d "$CONFIG_DIR" ]; then
+    clear
+    read -p "Found existing Mango config. Backup? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        mv "$CONFIG_DIR" "$CONFIG_DIR.bak.$(date +%s)"
+        msg "Backed up existing config"
+    else
+        clear
+        read -p "Overwrite without backup? (y/n) " -n 1 -r
+        echo
+        [[ $REPLY =~ ^[Yy]$ ]] || die "Installation cancelled"
+        rm -rf "$CONFIG_DIR"
+    fi
+fi
+
+# Copy configs
+msg "Setting up configuration..."
+mkdir -p "$CONFIG_DIR"
+cp -r "$SCRIPT_DIR"/config/* "$CONFIG_DIR"/ || die "Failed to copy configs"
+chmod +x "$CONFIG_DIR"/scripts/*
+
+# dunst is started with -config from config.conf; the symlink covers the
+# D-Bus-activated case (a notification arriving before autostart ran).
+mkdir -p ~/.config/dunst
+ln -sfn "$CONFIG_DIR/dunst/dunstrc" ~/.config/dunst/dunstrc
+
+# Setup directories
+xdg-user-dirs-update
+mkdir -p ~/Screenshots
+
+# Drop quickstart cheatsheet in $HOME (user can delete once read)
+if [ -f "$SCRIPT_DIR/QUICKSTART.md" ]; then
+    cp "$SCRIPT_DIR/QUICKSTART.md" "$HOME/QUICKSTART-mango.md"
+fi
+
+# Copy nvidia-setup.sh to $HOME so NVIDIA users can re-run it after install
+if [ -f "$SCRIPT_DIR/nvidia-setup.sh" ]; then
+    cp "$SCRIPT_DIR/nvidia-setup.sh" "$HOME/nvidia-setup.sh"
+    chmod +x "$HOME/nvidia-setup.sh"
+fi
+
+# Butterscript helper
+get_script() {
+    wget -qO- "https://justaguy.dev/drew/butterscripts/raw/branch/main/$1" | bash
+}
+
+# Install essential components
+if [ "$ONLY_CONFIG" = false ]; then
+    mkdir -p "$TEMP_DIR" && cd "$TEMP_DIR"
+
+    msg "Installing kitty..."
+    get_script "kitty/install_kitty.sh" || warn "Kitty installation failed - you can install it manually later"
+
+    msg "Installing fonts..."
+    get_script "theming/install_nerdfonts.sh" || warn "Font installation failed - you can install fonts manually later"
+
+    msg "Installing themes..."
+    get_script "theming/install_theme.sh" || warn "Theme installation failed - you can install themes manually later"
+
+    msg "Downloading wallpaper directory..."
+    if [ ! -d "$CONFIG_DIR/wallpaper" ]; then
+        git clone --depth 1 --progress https://github.com/drewgrif/wallpapers.git "$CONFIG_DIR/wallpaper" || die "Failed to clone wallpapers"
+        rm -rf "$CONFIG_DIR/wallpaper/.git"
+    else
+        msg "Wallpaper directory already exists, skipping..."
+    fi
+
+    msg "Downloading display manager installer..."
+    wget -O "$TEMP_DIR/install_lightdm.sh" "https://justaguy.dev/drew/butterscripts/raw/branch/main/system/install_lightdm.sh"
+    chmod +x "$TEMP_DIR/install_lightdm.sh"
+    msg "Running display manager installer..."
+    # Run in current terminal session to preserve interactivity
+    bash "$TEMP_DIR/install_lightdm.sh"
+
+    # NVIDIA setup (auto-detects GPU and drivers)
+    # Skip in chroot (no GPU access) or if running as root (e.g., during butterknife install)
+    if [ "$EUID" -ne 0 ] && [ ! -f /run/host/container-manager ] && [ -d /sys/class/drm ]; then
+        msg "Checking for NVIDIA GPU configuration..."
+        bash "$SCRIPT_DIR/nvidia-setup.sh" || warn "NVIDIA setup skipped"
+    else
+        msg "Skipping NVIDIA setup (chroot or root environment)"
+    fi
+
+    # Optional tools
+    clear
+    read -p "Install optional tools (browsers, editors, etc)? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        msg "Downloading optional tools installer..."
+        wget -O "$TEMP_DIR/optional_tools.sh" "https://justaguy.dev/drew/butterscripts/raw/branch/main/setup/optional_tools.sh"
+        chmod +x "$TEMP_DIR/optional_tools.sh"
+        msg "Running optional tools installer..."
+        if bash "$TEMP_DIR/optional_tools.sh"; then
+            msg "Optional tools completed successfully"
+        else
+            msg "Optional tools exited (this is normal if cancelled by user)"
+        fi
+    fi
+else
+    msg "Skipping external tool installation (--only-config mode)"
+fi
+
+# Done
+echo -e "\n${GREEN}Installation complete!${NC}"
+echo "1. Log out (fully — the render group applies at next login) and select 'Mango' from your display manager"
+echo "2. Press Super + / for keybindings"
+echo "3. Super + Space for application launcher"
+echo "4. Super + Shift + p for the wallpaper picker (re-themes the desktop from the image)"
+echo "5. Super + Shift + m for the command menu"
+echo "6. See ~/QUICKSTART-mango.md for a quick reference"
+echo "Installation log: $LOG_FILE"
