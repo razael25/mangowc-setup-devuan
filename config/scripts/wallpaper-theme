@@ -251,6 +251,17 @@ if [ -d "$GTK_SRC" ]; then
         xsettingsd >/dev/null 2>&1 9>&- &
     fi
 
+    # Wayland: native GTK apps ignore settings.ini and xsettingsd once running
+    # and ask the settings portal, which reads gsettings — set the same names
+    # there so thunar & co. restyle live (Xwayland apps still get xsettingsd).
+    if command -v gsettings >/dev/null 2>&1; then
+        gsettings set org.gnome.desktop.interface gtk-theme "$NEW" 2>/dev/null || true
+        if [ -d "$HOME/.local/share/icons/$ICONS" ] || [ -d "/usr/share/icons/$ICONS" ]; then
+            gsettings set org.gnome.desktop.interface icon-theme "$ICONS" 2>/dev/null || true
+        fi
+        gsettings set org.gnome.desktop.interface color-scheme prefer-dark 2>/dev/null || true
+    fi
+
     # GTK4/libadwaita reads ~/.config/gtk-4.0 directly (new apps pick it up)
     mkdir -p "$HOME/.config/gtk-4.0"
     for f in assets gtk.css gtk-dark.css; do

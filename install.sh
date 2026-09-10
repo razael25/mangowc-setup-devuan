@@ -189,13 +189,15 @@ else
 fi
 
 # Handle existing config
+BACKUP_DIR=""
 if [ -d "$CONFIG_DIR" ]; then
     clear
     read -p "Found existing Mango config. Backup? (y/n) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        mv "$CONFIG_DIR" "$CONFIG_DIR.bak.$(date +%s)"
-        msg "Backed up existing config"
+        BACKUP_DIR="$CONFIG_DIR.bak.$(date +%s)"
+        mv "$CONFIG_DIR" "$BACKUP_DIR"
+        msg "Backed up existing config to $BACKUP_DIR"
     else
         clear
         read -p "Overwrite without backup? (y/n) " -n 1 -r
@@ -210,6 +212,40 @@ msg "Setting up configuration..."
 mkdir -p "$CONFIG_DIR"
 cp -r "$SCRIPT_DIR"/config/* "$CONFIG_DIR"/ || die "Failed to copy configs"
 chmod +x "$CONFIG_DIR"/scripts/*
+
+# Session environment ($CONFIG_DIR/env, just copied) is sourced by
+# mango-session, the login wrapper the mangowc package's session entry runs
+# from 0.14.4-4 on — that's how KITTY_CONFIG_DIRECTORY reaches the terminals
+# mango spawns, under any display manager. Older packages start the bare
+# binary and ignore the file.
+MANGO_VER=$(dpkg-query -W -f='${Version}' mangowc 2>/dev/null || true)
+if [ -z "$MANGO_VER" ]; then
+    [ "$ONLY_CONFIG" = true ] && warn "mangowc is not installed - $CONFIG_DIR/env needs mangowc 0.14.4-4 or newer (butterrepo)"
+elif ! dpkg --compare-versions "$MANGO_VER" ge 0.14.4-4; then
+    warn "mangowc $MANGO_VER is older than 0.14.4-4: $CONFIG_DIR/env won't be sourced at login (kitty theming stays global) - update mangowc from butterrepo"
+fi
+
+# The session kitty folder must end up with a kitty.conf. On a full install
+# the butterscripts kitty installer writes one there (--config-dir); this
+# covers --only-config, a butterscripts that predates the flag, and an
+# installer failure. Sources in order: the config backup made above (a
+# re-run keeps the user's kitty tweaks and last theme), then the global
+# ~/.config/kitty. An existing session kitty.conf is left alone.
+seed_session_kitty() {
+    [ -f "$CONFIG_DIR/kitty/kitty.conf" ] && return 0
+    local src
+    for src in ${BACKUP_DIR:+"$BACKUP_DIR/kitty"} "$HOME/.config/kitty"; do
+        [ -f "$src/kitty.conf" ] || continue
+        mkdir -p "$CONFIG_DIR/kitty"
+        cp "$src/kitty.conf" "$CONFIG_DIR/kitty/"
+        [ -f "$CONFIG_DIR/kitty/current-theme.conf" ] \
+            || cp "$src/current-theme.conf" "$CONFIG_DIR/kitty/" 2>/dev/null || true
+        msg "Seeded $CONFIG_DIR/kitty from $src"
+        return 0
+    done
+    warn "No kitty.conf found for $CONFIG_DIR/kitty - kitty starts with defaults until one is there (run without --only-config to install kitty)"
+}
+[ "$ONLY_CONFIG" = true ] && seed_session_kitty
 
 # dunst is started with -config from config.conf; the symlink covers the
 # D-Bus-activated case (a notification arriving before autostart ran).
@@ -231,17 +267,22 @@ if [ -f "$SCRIPT_DIR/nvidia-setup.sh" ]; then
     chmod +x "$HOME/nvidia-setup.sh"
 fi
 
-# Butterscript helper
+# Butterscript helper: get_script <path> [args passed to the script]
 get_script() {
-    wget -qO- "https://justaguy.dev/drew/butterscripts/raw/branch/main/$1" | bash
+    wget -qO- "https://justaguy.dev/drew/butterscripts/raw/branch/main/$1" | bash -s -- "${@:2}"
 }
 
 # Install essential components
 if [ "$ONLY_CONFIG" = false ]; then
     mkdir -p "$TEMP_DIR" && cd "$TEMP_DIR"
 
+    # kitty's config is session-local: the installer writes it into
+    # $CONFIG_DIR/kitty (mango-session exports KITTY_CONFIG_DIRECTORY there)
+    # and leaves ~/.config/kitty alone
     msg "Installing kitty..."
-    get_script "kitty/install_kitty.sh" || warn "Kitty installation failed - you can install it manually later"
+    get_script "kitty/install_kitty.sh" "--config-dir=$CONFIG_DIR/kitty" \
+        || warn "Kitty installation failed - you can install it manually later"
+    seed_session_kitty
 
     msg "Installing fonts..."
     get_script "theming/install_nerdfonts.sh" || warn "Font installation failed - you can install fonts manually later"

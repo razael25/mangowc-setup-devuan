@@ -1,0 +1,8 @@
+# ~/.config/mango/env — session environment. Sourced by mango-session (the
+# mangowc package's login wrapper) before the compositor starts, so
+# everything mango spawns — terminals, launchers, the scratchpad — inherits
+# it. Plain KEY=VALUE lines; shell syntax, so $HOME works.
+
+# kitty reads its config from here: wallpaper-theme recolours
+# current-theme.conf in this folder and leaves ~/.config/kitty alone.
+KITTY_CONFIG_DIRECTORY=$HOME/.config/mango/kitty

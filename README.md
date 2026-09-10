@@ -190,6 +190,8 @@ so it's quick on integrated graphics. Flip any of it in the layout picker.
 ├── config.conf           # everything: look, input, layouts, autostart, binds, rules
 ├── theme.conf            # border colors, written by the wallpaper picker (sourced)
 ├── mango-gaps, mango-effects  # picker state, re-applied by the bar on start
+├── env                   # session environment, sourced at login by mango-session
+├── kitty/                # session-local kitty config (kitty.conf + theme, see below)
 ├── scripts/
 │   ├── bar               # quickshell helper: restart | log | ipc …
 │   ├── mango-ipc         # mmsg wrapper that finds the socket
@@ -216,6 +218,21 @@ refresh, position, fractional scale and adaptive sync — two commented
 templates are waiting in the `outputs` section, and `wlr-randr` lists the
 names and modes to fill in. Tearing is allowed for fullscreen clients that
 ask for it (games), nothing else.
+
+---
+
+## 🐱 Kitty Is Session-Local
+
+`~/.config/mango/env` holds session environment, one line today:
+`KITTY_CONFIG_DIRECTORY=$HOME/.config/mango/kitty`. The mangowc package's
+session entry runs `mango-session`, which sources that file and then starts
+the compositor, so every kitty mango spawns reads the session's own kitty
+folder. The wallpaper picker recolors the terminal there without touching
+`~/.config/kitty`, and a global kitty change never reaches this session
+unless you want it to. The installer has the butterscripts kitty installer
+write the config straight into that folder; `--only-config` seeds it from
+`~/.config/kitty` instead. Works the same under lightdm, sddm, gdm, ly or a
+TTY start — they all run the session entry. Needs mangowc 0.14.4-4 or newer.
 
 ---
 

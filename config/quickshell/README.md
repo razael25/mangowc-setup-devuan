@@ -41,8 +41,10 @@ does this), or `scripts/bar restart|log` which handles the `-p` flag.
 - `Commands.qml` — keep-awake is a `systemd-inhibit --what=idle` holder
   process (swayidle watches logind for idle inhibitors, so this also
   keeps the monitor from powering down); night light is wlsunset; the
-  updates terminal is kitty; screen off is `wlopm --off '*'`, any input
-  wakes it.
+  updates terminal is kitty; screen off is `scripts/screen-off`, a
+  one-shot swayidle that powers the outputs down and brings them back on
+  the first input (a bare `wlopm --off` would stay dark until the login
+  swayidle's own 15-minute resume).
 - `Screenshot.qml` — `scripts/screenshot` (grim + slurp, clipboard).
 - `VolumePopup.qml` — right-click on Volume: slider plus a sink picker
   (every PipeWire output, click to make it the default) and a

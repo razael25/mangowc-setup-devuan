@@ -309,7 +309,7 @@ BarModule {
                     { icon: "󰑓", label: "Restart bar",
                       run: () => Quickshell.execDetached([Theme.configDir + "/scripts/bar", "restart"]) },
                     { icon: "󰌢", label: "Screen off",
-                      run: () => Quickshell.execDetached(["wlopm", "--off", "*"]) },
+                      run: () => Quickshell.execDetached([Theme.configDir + "/scripts/screen-off"]) },
                     { icon: "󰐥", label: "Power menu",
                       run: () => Quickshell.execDetached([Theme.configDir + "/scripts/power"]) }
                 ]
