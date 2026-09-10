@@ -49,7 +49,7 @@ BarModule {
             "printf '%s\\n' " +
             "\"$(powerprofilesctl get 2>/dev/null)\" " +
             "\"$(brightnessctl -m -c backlight 2>/dev/null | head -n1)\" " +
-            "\"$(pgrep -f 'why=quickshell-caffeine' >/dev/null && echo awake)\" " +
+            "\"$(pgrep -f '[w]hy=quickshell-caffeine' >/dev/null && echo awake)\" " +
             "\"$(pgrep -x wlsunset >/dev/null && echo night)\""]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -305,7 +305,7 @@ BarModule {
                               root.caffeine = !root.caffeine
                               Quickshell.execDetached(["sh", "-c", root.caffeine
                                   ? "systemd-inhibit --what=idle --who=quickshell --why=quickshell-caffeine sleep infinity >/dev/null 2>&1 &"
-                                  : "pkill -f 'why=quickshell-caffeine'"])
+                                  : "pkill -f '[w]hy=quickshell-caffeine'"])
                           } },
                         { icon: Sys.micMuted ? "󰍭" : "󰍬",
                           label: Sys.micMuted ? "Muted" : "Mic",

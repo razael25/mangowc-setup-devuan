@@ -5,7 +5,7 @@
 # (Canvas histogram) and passes the derived palette in.
 #
 # This is the single theming system: the wallpaper picker dictates every
-# color (bar, rofi, dunst, kitty, GTK, mango borders).
+# color (bar, rofi, dunst, kitty, GTK, mango borders) and the wallpaper itself (awww).
 #
 # usage: wallpaper-theme <image> <bg> <altbg> <fg> <border> <primary> <secondary> <alert> <disabled> <ansi0..15>
 
@@ -166,13 +166,15 @@ return {
 EOF
 fi
 
-# 6. Wallpaper now (swaybg, replaced in place) + persisted into
-#    config.conf's exec-once line so it survives logins. Written as a
-#    literal $HOME path so the file stays portable. The dunst symlink
-#    follows the active session's config.
-pkill -x swaybg 2>/dev/null || true
-swaybg -m fill -i "$IMG" >/dev/null 2>&1 9>&- &
-sed -i "s|^exec-once=swaybg .*|exec-once=swaybg -m fill -i \$HOME${CONFIG_DIR#"$HOME"}/wallpaper/$(basename "$IMG")|" "$CONFIG_DIR/config.conf"
+# 6. Wallpaper now — awww animates the change (the daemon is started by
+#    config.conf's exec-once; started here too in case it isn't running)
+#    — and persisted into config.conf's `awww img` line so it survives
+#    logins. Written as a literal $HOME path so the file stays portable.
+#    The dunst symlink follows the active session's config.
+pgrep -x awww-daemon >/dev/null 2>&1 || { awww-daemon >/dev/null 2>&1 9>&- & sleep 0.5; }
+awww img "$IMG" --resize crop --transition-type wipe --transition-angle 30 \
+    --transition-fps 60 --transition-duration 1 >/dev/null 2>&1 || true
+sed -i "s|^exec-once=awww img .*|exec-once=awww img \$HOME${CONFIG_DIR#"$HOME"}/wallpaper/$(basename "$IMG") --resize crop|" "$CONFIG_DIR/config.conf"
 mkdir -p "$HOME/.cache/mango" "$HOME/.config/dunst"
 echo "$IMG" > "$HOME/.cache/mango/current_wallpaper"
 ln -sfn "$CONFIG_DIR/dunst/dunstrc" "$HOME/.config/dunst/dunstrc"

@@ -93,8 +93,9 @@ else
 fi
 
 # Package groups for better organization
+# awww: animated wallpaper daemon (butterrepo; formerly swww)
 PACKAGES_CORE=(
-    mangowc xwayland swaybg
+    mangowc xwayland awww
 )
 
 # quickshell pulls its qml6 modules in through Recommends
