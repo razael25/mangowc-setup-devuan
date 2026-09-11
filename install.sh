@@ -87,7 +87,14 @@ if [ "$ONLY_CONFIG" = false ]; then
 
     # Add butterrepo for mangowc (+ wlroots 0.19 / scenefx 0.4), quickshell and rofi
     msg "Checking butterrepo..."
-    wget -qO- "https://justaguy.dev/drew/butterscripts/raw/branch/main/setup/add_butterrepo.sh" | bash
+    wget -qO- "https://justaguy.dev/drew/butterscripts/raw/branch/main/setup/add_butterrepo.sh" | bash \
+        || die "butterrepo could not be set up - see the messages above"
+
+    # Fail here, with the reason, rather than at the first apt install with
+    # "Unable to locate package mangowc".
+    if ! apt-cache policy mangowc 2>/dev/null | grep -q 'apt.justaguy.dev'; then
+        die "apt can't see mangowc in butterrepo. Check /etc/apt/sources.list.d/butterrepo.list, then run 'sudo apt-get update' and look for errors mentioning justaguy.dev"
+    fi
 else
     msg "Skipping system update (--only-config mode)"
 fi
