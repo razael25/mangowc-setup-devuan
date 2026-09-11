@@ -49,3 +49,4 @@ Super is the mod key. Config: `~/.config/mango/config.conf` (Super+Shift+r reloa
 
 ## Apps
 Super + b Firefox · Super + Shift + b private · Super + c Helium · Super + f Thunar · Super + e Geany
+Super + d Discord (tag 8) · Super + g GIMP (tag 9) · Super + o OBS (tag 10)

@@ -156,6 +156,7 @@ Super is the mod key. Same muscle memory as the other setups.
 | `Super + X`            | Power menu                             |
 | `Super + B` / `Super + Shift + B` | Firefox / Firefox private   |
 | `Super + C` / `Super + F` / `Super + E` | Helium / Thunar / Geany |
+| `Super + D` / `Super + G` / `Super + O` | Discord / GIMP / OBS, each on its home tag (8 / 9 / 10) |
 | `Super + Shift + Space`| Toggle floating                        |
 | `Super + Shift + F`    | Fullscreen                             |
 | `Super + T` / `Super + W` | Cycle layouts / Monocle             |
