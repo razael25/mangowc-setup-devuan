@@ -48,11 +48,18 @@ Options:
   --help             Show help message
 ```
 
-> ⚠️ **NVIDIA users:** Wayland on the proprietary driver needs kernel
-> modesetting and a couple of environment variables. The installer runs
-> `nvidia-setup.sh` when it detects one; it's also copied to
-> `~/nvidia-setup.sh` so you can re-run it. Unlike sway, mango needs no
-> `--unsupported-gpu` flag.
+Debian 13 (trixie) is the only base this has been tested on. Anything
+else — forky, sid, Ubuntu and its derivatives — the installer refuses on
+purpose. The reason is the wlroots pin, explained under **Why 0.14.4,
+and Why the Pin** below.
+
+> ⚠️ **NVIDIA: untested.** This setup has only been run on AMD
+> hardware. The installer runs the same `nvidia-setup.sh` as sway-setup
+> (kernel modesetting plus a couple of environment variables) when it
+> detects the proprietary driver, and copies it to `~/nvidia-setup.sh`
+> for re-runs. What nobody has verified is scenefx — blur, shadows, and
+> rounded corners — on the proprietary driver. If you try it, a report
+> either way is welcome.
 
 ---
 
