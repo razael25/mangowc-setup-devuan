@@ -58,29 +58,49 @@ Singleton {
     property bool follow: false     // no follow toggle on mango; kept for parity
     function toggleFollow() {}
 
-    // effects: blur / shadows / animations, flipped live by the picker
+    // effects: blur / shadows / animations toggles, plus border width and
+    // unfocused-window opacity sliders, all set live by the picker
     // (setoption) and persisted to mango-effects so they survive a bar
     // restart and a config reload (which resets setoption values). No
     // file = config.conf's values, which these defaults mirror; nothing
-    // is pushed to the compositor until the user has touched a toggle.
+    // is pushed to the compositor until the user has touched a control.
     property bool blur: false
     property bool shadows: true
     property bool animations: true
+    property int borderpx: 2
+    property int unfocusedOpacity: 100   // percent; 100 = no dimming
     property bool effectsFromFile: false
     function applyEffects() {
         if (!effectsFromFile) return
         dispatch("setoption,blur," + (blur ? 1 : 0))
         dispatch("setoption,shadows," + (shadows ? 1 : 0))
         dispatch("setoption,animations," + (animations ? 1 : 0))
+        dispatch("setoption,borderpx," + borderpx)
+        dispatch("setoption,unfocused_opacity," + (unfocusedOpacity / 100).toFixed(2))
+    }
+    function persistEffects() {
+        Quickshell.execDetached(["sh", "-c",
+            "printf 'blur=%s\\nshadows=%s\\nanimations=%s\\nborderpx=%s\\nunfocused_opacity=%s\\n' "
+            + (blur ? 1 : 0) + " " + (shadows ? 1 : 0) + " " + (animations ? 1 : 0)
+            + " " + borderpx + " " + unfocusedOpacity
+            + " > '" + Theme.configDir + "/mango-effects'"])
     }
     function setEffect(name, on) {
         root[name] = on
         effectsFromFile = true
         applyEffects()
-        Quickshell.execDetached(["sh", "-c",
-            "printf 'blur=%s\\nshadows=%s\\nanimations=%s\\n' "
-            + (blur ? 1 : 0) + " " + (shadows ? 1 : 0) + " " + (animations ? 1 : 0)
-            + " > '" + Theme.configDir + "/mango-effects'"])
+        persistEffects()
+    }
+    // slider paths: applied live while dragging, persisted on release
+    function setBorder(v) {
+        borderpx = v
+        effectsFromFile = true
+        dispatch("setoption,borderpx," + v)
+    }
+    function setUnfocusedOpacity(pct) {
+        unfocusedOpacity = pct
+        effectsFromFile = true
+        dispatch("setoption,unfocused_opacity," + (pct / 100).toFixed(2))
     }
 
     function setLayout(i) { dispatch("setlayout," + layoutIds[i]) }
@@ -138,8 +158,13 @@ Singleton {
         onLoaded: {
             for (const line of text().split("\n")) {
                 const [k, v] = line.split("=")
+                const val = (v ?? "").trim()
                 if (["blur", "shadows", "animations"].indexOf(k) >= 0)
-                    root[k] = (v ?? "").trim() === "1"
+                    root[k] = val === "1"
+                else if (k === "borderpx" && !isNaN(parseInt(val)))
+                    root.borderpx = parseInt(val)
+                else if (k === "unfocused_opacity" && !isNaN(parseInt(val)))
+                    root.unfocusedOpacity = parseInt(val)
             }
             root.effectsFromFile = true
             root.applyEffects()

@@ -28,8 +28,10 @@ does this), or `scripts/bar restart|log` which handles the `-p` flag.
   master width / count via the relative
   `setmfact` / `incnmaster` dispatches, tracked in Wm.qml since mango
   exposes no getter. Table in Wm.qml mirrors `src/layout/layout.h`.
-  Effects toggles (blur / shadows / animations) go through
-  `setoption` and persist to `mango-effects`; with no file the bar
+  Effects toggles (blur / shadows / animations) and the border-width
+  and unfocused-opacity sliders (`setoption,borderpx` /
+  `setoption,unfocused_opacity`) go through `setoption` and persist
+  together to `mango-effects` as key=value lines; with no file the bar
   pushes nothing and config.conf's values stand, so Wm.qml's defaults
   mirror config.conf. `mango-reload` re-applies these after the gaps.
 - `Popout.qml` — the card goes slightly translucent while blur is on

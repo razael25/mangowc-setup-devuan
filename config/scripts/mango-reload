@@ -1,6 +1,6 @@
 #!/bin/bash
 # mango-reload — reload config.conf, then have the bar re-apply the gaps
-# and the effects toggles.
+# and the effects (toggles, border width, unfocused opacity).
 # reload_config resets every setoption value (inner gaps from the slider,
 # outer gaps scaled to the screen) back to what config.conf says.
 CONFIG_DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"

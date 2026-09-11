@@ -119,9 +119,10 @@ single `mmsg watch` stream — no polling, no patch — and clicks go back throu
 | Commands    | command menu             | —                       | —              |
 
 The **layout picker** shows all fourteen mango layouts as glyph tiles, plus
-live sliders for gaps, master width and master count, toggles for blur,
-shadows and animations (they change under your cursor and stick), and the
-bar's own height and scale. The **command menu** holds the toggles that
+live sliders for gaps, border width, master width and master count,
+toggles for blur, shadows and animations, an unfocused-window opacity
+slider (they all change under your cursor and stick), and the bar's own
+height and scale. The **command menu** holds the toggles that
 don't earn a bar module: power profile, keep-awake, night light, DND, a
 pomodoro, screen off.
 
@@ -188,6 +189,13 @@ hot corner opens the overview too.
 is off by default; turn it on in the layout picker and it frosts what's
 behind those popups. Tiled windows stay flat and opaque so it's quick on
 integrated graphics. Every one of these is a toggle in the picker.
+
+Two sliders there are worth trying together: **unfocused opacity** fades
+every window that doesn't have focus a little toward the wallpaper (about
+90% is the sweet spot; lower and text in the stack gets hard to read on a
+bright wallpaper), and **border width** goes down to 0. Once the stack
+dims, the border isn't the only focus cue any more, so a borderless look
+still shows you which window is live.
 `~/QUICKSTART-mango.md` lands in your home folder for the first few days.
 
 ---

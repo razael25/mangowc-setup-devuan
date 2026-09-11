@@ -7,11 +7,12 @@ import Quickshell.Io
 // Top: all fourteen mango layouts as glyph tiles; click applies via
 // `mmsg dispatch setlayout`, panel stays open for experimenting.
 // Middle: live tweaks — inner window gap (setoption, persisted to the
-// mango-gaps state file Wm.qml re-applies on start), master width and
-// count (relative dispatches; tracked in Wm.qml, dimmed in layouts that
-// ignore them), then blur / shadows / animations toggles (setoption,
-// persisted to mango-effects). Bottom: bar height/scale, persisted to
-// the state files Theme.qml watches.
+// mango-gaps state file Wm.qml re-applies on start), border width,
+// master width and count (relative dispatches; tracked in Wm.qml, dimmed
+// in layouts that ignore them), then blur / shadows / animations toggles
+// and the unfocused-opacity slider (setoption, persisted to
+// mango-effects). Bottom: bar height/scale, persisted to the state files
+// Theme.qml watches.
 Popout {
     id: root
 
@@ -117,6 +118,14 @@ Popout {
             applyFn: v => Wm.setGaps(v)
             persistFn: v => root.persistFile("mango-gaps", v)
         }
+        TweakSlider {
+            label: "border width"
+            from: 0; to: 6
+            value: Wm.borderpx
+            suffix: " px"
+            applyFn: v => Wm.setBorder(v)
+            persistFn: v => Wm.persistEffects()
+        }
         // master sliders dim in layouts whose arrange ignores them
         TweakSlider {
             label: "master width"
@@ -158,6 +167,17 @@ Popout {
                 ]
                 TogglePill { width: (fxGrid.width - 8) / 3 }
             }
+        }
+        // windows without focus fade toward the wallpaper; 100 = off.
+        // Pairs with a thin border: once the stack dims, the border isn't
+        // the only focus cue any more.
+        TweakSlider {
+            label: "unfocused opacity"
+            from: 70; to: 100
+            value: Wm.unfocusedOpacity
+            suffix: "%"
+            applyFn: v => Wm.setUnfocusedOpacity(v)
+            persistFn: v => Wm.persistEffects()
         }
 
         SectionLabel { text: "Bar" }
