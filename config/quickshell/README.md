@@ -34,6 +34,9 @@ does this), or `scripts/bar restart|log` which handles the `-p` flag.
   together to `mango-effects` as key=value lines; with no file the bar
   pushes nothing and config.conf's values stand, so Wm.qml's defaults
   mirror config.conf. `mango-reload` re-applies these after the gaps.
+  Unfocused opacity reaching windows that are already open needs
+  mangowc 0.14.4-6 or newer (butterrepo; downstream patch) — upstream
+  only applies it to windows opened after the change.
 - `Popout.qml` — the card goes slightly translucent while blur is on
   (mango's `blur_layer` frosts what's behind it), solid when it's off.
 - `TogglePill.qml` — the quick-settings pill, shared by the command

@@ -195,7 +195,8 @@ every window that doesn't have focus a little toward the wallpaper (about
 90% is the sweet spot; lower and text in the stack gets hard to read on a
 bright wallpaper), and **border width** goes down to 0. Once the stack
 dims, the border isn't the only focus cue any more, so a borderless look
-still shows you which window is live.
+still shows you which window is live. The opacity slider needs mangowc
+0.14.4-6 or newer from butterrepo to affect windows that are already open.
 `~/QUICKSTART-mango.md` lands in your home folder for the first few days.
 
 ---
