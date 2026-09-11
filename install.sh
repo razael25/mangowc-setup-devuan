@@ -232,6 +232,14 @@ elif ! dpkg --compare-versions "$MANGO_VER" ge 0.14.4-4; then
     warn "mangowc $MANGO_VER is older than 0.14.4-4: $CONFIG_DIR/env won't be sourced at login (kitty theming stays global) - update mangowc from butterrepo"
 fi
 
+# Inside a VM, virtio-gpu renders the hardware cursor upside down or not at
+# all. Switch mango to a software cursor via the session env file (the line
+# is shipped commented out). Not a supported target, just not broken.
+if systemd-detect-virt -q 2>/dev/null; then
+    msg "Virtual machine detected ($(systemd-detect-virt)) - enabling software cursor"
+    sed -i 's|^#WLR_NO_HARDWARE_CURSORS=1$|WLR_NO_HARDWARE_CURSORS=1|' "$CONFIG_DIR/env"
+fi
+
 # dunst is started with -config from config.conf; the symlink covers the
 # D-Bus-activated case (a notification arriving before autostart ran).
 mkdir -p ~/.config/dunst

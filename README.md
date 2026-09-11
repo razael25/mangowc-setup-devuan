@@ -61,6 +61,10 @@ and Why the Pin** below.
 > rounded corners — on the proprietary driver. If you try it, a report
 > either way is welcome.
 
+Virtual machines: it runs, and the installer switches to a software cursor
+so the pointer isn't upside down under virtio-gpu, but blur and animations
+will crawl without a real GPU. Not a supported target.
+
 ---
 
 ## 📦 What It Installs

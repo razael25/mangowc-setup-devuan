@@ -6,3 +6,8 @@
 # kitty reads its config from here: wallpaper-theme recolours
 # current-theme.conf in this folder and leaves ~/.config/kitty alone.
 KITTY_CONFIG_DIRECTORY=$HOME/.config/mango/kitty
+
+# Software cursor. Virtual machines (virtio-gpu draws the hardware cursor
+# upside down or not at all) and the proprietary NVIDIA driver need it.
+# The installer uncomments this when it finds itself inside a VM.
+#WLR_NO_HARDWARE_CURSORS=1
