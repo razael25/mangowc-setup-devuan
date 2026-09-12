@@ -280,7 +280,7 @@ if [ "$ONLY_CONFIG" = false ]; then
     get_script "theming/install_nerdfonts.sh" || warn "Font installation failed - you can install fonts manually later"
 
     msg "Installing themes..."
-    get_script "theming/install_theme.sh" || warn "Theme installation failed - you can install themes manually later"
+    get_script "theming/install_wallpaper_theme.sh" || warn "Theme installation failed - you can install themes manually later"
 
     msg "Downloading wallpaper directory..."
     if [ ! -d "$CONFIG_DIR/wallpaper" ]; then
