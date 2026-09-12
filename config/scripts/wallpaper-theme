@@ -185,7 +185,23 @@ ln -sfn "$CONFIG_DIR/dunst/dunstrc" "$HOME/.config/dunst/dunstrc"
 #    xsettingsd always sees a name change and live-restyles GTK3 apps.
 GTK_SRC="$HOME/.themes/Orchis-Dark-Nord"
 GTK3_CONF="$HOME/.config/gtk-3.0/settings.ini"
-if [ -d "$GTK_SRC" ]; then
+# The substitutions below target the plain-Nord build's exact hexes. A missing
+# template (theme installer failed, or a config-only install) or the black-tweak
+# build of the same name (qtile's install_theme.sh) would leave GTK silently
+# unthemed - say so on screen instead.
+gtk_template_ok() {
+    if [ ! -d "$GTK_SRC" ]; then
+        notify-send -a "Wallpaper" -u critical "GTK not themed" \
+            "Orchis-Dark-Nord is missing. Rerun the theme installer:\ntheming/install_wallpaper_theme.sh"
+        return 1
+    fi
+    if ! grep -qi '#242932' "$GTK_SRC/gtk-3.0/gtk.css" 2>/dev/null; then
+        notify-send -a "Wallpaper" -u critical "GTK not themed" \
+            "Orchis-Dark-Nord is the black-tweak build. Rerun the theme installer:\ntheming/install_wallpaper_theme.sh"
+        return 1
+    fi
+}
+if gtk_template_ok; then
     rgb() { h=${1#\#}; printf '%d, %d, %d' \
         "0x$(printf %s "$h" | cut -c1-2)" \
         "0x$(printf %s "$h" | cut -c3-4)" \
