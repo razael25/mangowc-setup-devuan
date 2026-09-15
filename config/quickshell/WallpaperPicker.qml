@@ -201,6 +201,30 @@ Popout {
         return d > 180 ? 360 - d : d
     }
 
+    // WCAG relative luminance / contrast ratio, for the legibility floor below
+    function luminance(hex) {
+        const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+            .map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4))
+        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    }
+
+    function contrast(a, b) {
+        const x = luminance(a), y = luminance(b)
+        return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+    }
+
+    // hslToHex, but lifted (lightness only) until it reads against `bg` at
+    // `min`:1. Hue and saturation stay whatever the image earned; dark art
+    // with a saturated accent otherwise lands a primary you can't see.
+    function legible(h, s, l, bg, min) {
+        let hex = hslToHex(h, s, l)
+        while (contrast(hex, bg) < min && l < 0.9) {
+            l += 0.02
+            hex = hslToHex(h, s, l)
+        }
+        return hex
+    }
+
     function finish(d) {
         // histogram: 4 bits/channel → up to 4096 bins, averaged per bin
         const bins = new Map()
@@ -302,10 +326,10 @@ Popout {
             if ((c.h <= 20 || c.h >= 340) && c.s > 0.35 && (!alC || c.n > alC.n))
                 alC = c
         }
-        const alert = alC ? (art ? hslToHex(alC.h, Math.min(Math.max(alC.s, 0.4), 0.8),
-                                            Math.min(Math.max(alC.l, 0.5), 0.65))
-                                 : hslToHex(alC.h, Math.min(Math.max(alC.s, 0.35), 0.45), 0.66))
-                          : hslToHex(4, 0.4, 0.66)
+        const alHsl = alC ? (art ? [alC.h, Math.min(Math.max(alC.s, 0.4), 0.8),
+                                    Math.min(Math.max(alC.l, 0.5), 0.65)]
+                                 : [alC.h, Math.min(Math.max(alC.s, 0.35), 0.45), 0.66])
+                          : [4, 0.4, 0.66]
 
         // fg: warm cream (everforest-style) rather than near-white — borrow
         // the image's warmest muted hue when it has one, else a stock beige
@@ -314,15 +338,17 @@ Popout {
             if (c.h >= 20 && c.h <= 60 && c.l > 0.3) { fgH = c.h; break }
         }
 
+        // legibility floor: 4.5:1 for accents (readable text), 3:1 for disabled
+        const bg = hslToHex(bgH, bgS, bgL)
         const palette = [
-            hslToHex(bgH, bgS, bgL),                    // bg
+            bg,                                         // bg
             hslToHex(bgH, bgS, bgL + 0.06),             // altbg
             hslToHex(fgH, 0.2, 0.78),                   // fg
             hslToHex(priH, 0.18, bgL + 0.1),            // border
-            hslToHex(priH, priS, priL),                 // primary
-            hslToHex(secH, secS, secL),                 // secondary
-            alert,                                      // alert
-            hslToHex(bgH, 0.1, 0.4)                     // disabled
+            legible(priH, priS, priL, bg, 4.5),         // primary
+            legible(secH, secS, secL, bg, 4.5),         // secondary
+            legible(alHsl[0], alHsl[1], alHsl[2], bg, 4.5), // alert
+            legible(bgH, 0.1, 0.4, bg, 3.0)             // disabled
         ]
 
         // terminal ANSI palette (kitty): image hues placed in their nearest
@@ -365,8 +391,8 @@ Popout {
             // fidelity: each hue keeps its own body; pastel: uniform wash
             const s = art ? Math.min(Math.max(t.s, 0.35), 0.8) : 0.4
             const l = art ? Math.min(Math.max(t.l, 0.5), 0.7) : 0.66
-            ansi[i + 1] = hslToHex(t.h, s, l)
-            ansi[i + 9] = hslToHex(t.h, art ? s : 0.42, Math.min(l + 0.08, 0.78))
+            ansi[i + 1] = legible(t.h, s, l, bg, 4.0)
+            ansi[i + 9] = legible(t.h, art ? s : 0.42, Math.min(l + 0.08, 0.78), bg, 4.0)
         }
 
         Quickshell.execDetached(
