@@ -278,15 +278,17 @@ ShellRoot {
             }
         }
 
-        // "Device <mac> <name…>" lines; a === marker splits paired from
-        // connected so one process covers both
+        // "Device <mac> <name…>" lines; known = Paired + Trusted (a device
+        // can be either, or both — dedupe by mac); a === marker splits
+        // known from connected so one process covers all
         property var _btPaired: []
         property var _btConn: []
         property bool _btPastMark: false
         Process {
             id: btDevsProc
             command: ["sh", "-c",
-                "bluetoothctl devices Paired 2>/dev/null; echo ===; " +
+                "bluetoothctl devices Paired 2>/dev/null; " +
+                "bluetoothctl devices Trusted 2>/dev/null; echo ===; " +
                 "bluetoothctl devices Connected 2>/dev/null"]
             stdout: SplitParser {
                 onRead: line => {
@@ -295,7 +297,8 @@ ShellRoot {
                     if (p[0] !== "Device" || p.length < 3) return
                     const d = { mac: p[1], name: p.slice(2).join(" ") }
                     if (win._btPastMark) win._btConn.push(d.mac)
-                    else win._btPaired.push(d)
+                    else if (!win._btPaired.some(k => k.mac === d.mac))
+                        win._btPaired.push(d)
                 }
             }
             onRunningChanged: {
@@ -346,9 +349,24 @@ ShellRoot {
             btScanProc.running = true
         }
 
+        // some headsets make `connect` exit non-zero (br-connection-refused)
+        // after BlueZ already flipped Connected: yes — trust the state, not
+        // the exit code
         function btToggleDevice(d) {
-            run(["bluetoothctl", d.connected ? "disconnect" : "connect", d.mac],
-                (d.connected ? "disconnecting " : "connecting ") + d.name + "…")
+            if (d.connected)
+                run(["bluetoothctl", "disconnect", d.mac],
+                    "disconnecting " + d.name + "…")
+            else
+                run(["sh", "-c", "bluetoothctl connect " + d.mac + "; sleep 1; " +
+                     "bluetoothctl info " + d.mac + " | grep -q 'Connected: yes'"],
+                    "connecting " + d.name + "…")
+        }
+
+        // right-click on a known device: drop the pairing
+        function btForget(d) {
+            run(["sh", "-c", "bluetoothctl disconnect " + d.mac + " >/dev/null 2>&1; " +
+                 "bluetoothctl remove " + d.mac],
+                "forgetting " + d.name + "…")
         }
 
         // PIN-less pair+trust+connect; devices that want a PIN fail here
@@ -684,7 +702,10 @@ ShellRoot {
                         id: btMa
                         anchors.fill: parent
                         hoverEnabled: true
-                        onClicked: win.btToggleDevice(btRow.modelData)
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        onClicked: mouse => mouse.button === Qt.RightButton
+                            ? win.btForget(btRow.modelData)
+                            : win.btToggleDevice(btRow.modelData)
                     }
                 }
             }
