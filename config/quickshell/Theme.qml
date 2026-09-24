@@ -60,14 +60,22 @@ Singleton {
 
     readonly property string fontFamily: "JetBrainsMono Nerd Font"
 
-    // Resolution-aware base scale from the first output's logical height:
+    // Resolution-aware base scale from the outputs' logical short side:
     // 1.0 at 1080p, 1.33 at 1440p, 2.0 at unscaled 4K. An output scale set
-    // in mango (the proper hi-dpi fix) shrinks the logical height, so this
-    // stays at 1.0 there and nothing is scaled twice.
+    // in mango (the proper hi-dpi fix) shrinks the logical size, so this
+    // stays at 1.0 there and nothing is scaled twice. The short side keeps
+    // portrait monitors from inflating it; with mixed outputs the smallest
+    // wins, so the result doesn't depend on output order and no bar is
+    // oversized (the scale slider bumps it up if wanted).
     readonly property real autoScale: {
-        const s = Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
-        const h = s ? s.height : 1080
-        return Math.min(Math.max(h / 1080, 0.75), 2.5)
+        const screens = Quickshell.screens
+        let side = 0
+        for (let i = 0; i < screens.length; i++) {
+            const edge = Math.min(screens[i].width, screens[i].height)
+            if (side === 0 || edge < side)
+                side = edge
+        }
+        return Math.min(Math.max((side || 1080) / 1080, 0.75), 2.5)
     }
 
     // The bar's inset from the screen edges. Wm.qml sets mango's outer
