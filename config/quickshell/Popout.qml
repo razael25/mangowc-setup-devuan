@@ -18,6 +18,8 @@ PanelWindow {
     readonly property real cardPadding: 14
     // right-edge panel mode (control center) instead of centered-under-anchor
     property bool alignRight: false
+    // centered on the output instead (cards too wide to hang off a module)
+    property bool centered: false
 
     default property alias content: inner.data
 
@@ -57,6 +59,7 @@ PanelWindow {
         id: card
 
         x: root.alignRight ? root.width - width - 8
+         : root.centered ? Math.round((root.width - width) / 2)
          : Math.min(Math.max(root.ax + (root.anchorItem?.width ?? 0) / 2 - width / 2, 8),
                     root.width - width - 8)
         y: root.ay + (root.anchorItem?.height ?? 0) + 12

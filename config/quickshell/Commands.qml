@@ -209,6 +209,12 @@ BarModule {
         anchorItem: root
     }
 
+    // Super+/ and the Keybindings row below
+    KeybindsPopup {
+        id: keybinds
+        anchorItem: root
+    }
+
     Popout {
         id: menu
         anchorItem: root
@@ -305,7 +311,7 @@ BarModule {
                           "sudo apt update && apt list --upgradable; " +
                           "printf '\\ndone - press enter to close '; read _"]) },
                     { icon: "󰌌", label: "Keybindings",
-                      run: () => Quickshell.execDetached([Theme.configDir + "/scripts/help"]) },
+                      run: () => keybinds.visible = true },
                     { icon: "󰑓", label: "Restart bar",
                       run: () => Quickshell.execDetached([Theme.configDir + "/scripts/bar", "restart"]) },
                     { icon: "󰌢", label: "Screen off",

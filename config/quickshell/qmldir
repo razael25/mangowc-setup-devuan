@@ -31,3 +31,4 @@ TogglePill TogglePill.qml
 Weather Weather.qml
 WeatherPopup WeatherPopup.qml
 NotifyPopup NotifyPopup.qml
+KeybindsPopup KeybindsPopup.qml

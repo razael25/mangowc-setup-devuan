@@ -80,7 +80,7 @@ as proper `.deb`s, built in a clean trixie container by
 | `libwlroots-0.19`           | Its wlroots, side by side with Debian's 0.18 (sway keeps working) |
 | `libscenefx-0.4`            | Blur, shadows, rounded corners                                 |
 | `quickshell`                | The bar and every popup                                        |
-| `rofi`                      | Launcher, power menu, keybind cheatsheet                       |
+| `rofi`                      | Launcher and power menu                                        |
 | `awww`                      | Wallpaper daemon (the artist formerly known as swww) — wallpapers wipe in, they don't just appear |
 
 Everything else is stock Debian:
@@ -182,8 +182,11 @@ Super is the mod key. Same muscle memory as the other setups.
 | `Super + Shift + T`    | Layout / tweaks picker                 |
 | `Super + S` / `Super + Shift + S` | Screenshot full / region (to `~/Screenshots`) |
 
-Every bind in `config.conf` has a comment above it — that's what
-`Super + /` reads, so add a bind, add a comment, and the cheatsheet knows.
+`Super + /` opens the keybinds popup: every bind in `config.conf`,
+grouped by the config's `# --- section ---` headers. Type to filter;
+click a bind to open `config.conf` in geany at that line. The comment
+line right above a bind is its label, so add a bind, add a comment, and
+the popup knows. Mouse, scroll and touchpad binds are listed too.
 
 **Touchpad:** three fingers swipe through the tags, three up for the
 overview; four fingers carry the focused window along. The bottom-left
@@ -220,10 +223,11 @@ still shows you which window is live. The opacity slider needs mangowc
 │   ├── wallpaper-theme   # the theming engine
 │   ├── screenshot        # grim/slurp: full | region
 │   ├── changevolume      # volume + notifications
-│   ├── power / help / network / weather
+│   ├── keybinds          # config.conf's binds for the keybinds popup
+│   ├── power / network / weather
 ├── quickshell/           # the bar (see its README)
 ├── quickshell-network/   # the network app (its own qs instance)
-├── rofi/                 # config / keybinds / power .rasi (colors theme-managed)
+├── rofi/                 # config / power .rasi (colors theme-managed)
 ├── dunst/                # dunstrc (theme-managed)
 ├── polybar/colors.ini    # the live palette the bar watches (name is historical)
 └── wallpaper/

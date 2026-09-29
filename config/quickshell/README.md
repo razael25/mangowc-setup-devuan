@@ -51,6 +51,10 @@ does this), or `scripts/bar restart|log` which handles the `-p` flag.
   the first input (a bare `wlopm --off` would stay dark until the login
   swayidle's own 15-minute resume).
 - `Screenshot.qml` — `scripts/screenshot` (grim + slurp, clipboard).
+- `KeybindsPopup.qml` — the Super+/ cheatsheet. The popup itself is
+  WM-agnostic; `scripts/keybinds` turns config.conf's binds into its rows
+  (section, keys, label, line) and opens geany at a bind's line. Opened
+  from the command menu or `ipc call keybinds toggle`. Mango only so far.
 - `VolumePopup.qml` — right-click on Volume: slider plus a sink picker
   (every PipeWire output, click to make it the default) and a
   pavucontrol row. Reads and writes through Quickshell's Pipewire
