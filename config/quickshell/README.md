@@ -46,6 +46,12 @@ icon theme in as `QS_ICON_THEME` (quickshell doesn't follow it itself).
   set of sizes; `fitWidth`/`fitHeight` give screen-sized popups the room
   in those units.
   The network app reads the same setting in its own Theme copy.
+- `QuickTile.qml` — the command menu's two-line quick-settings tile
+  (name over state, accent when on, red for mic muted / DND).
+- `Batteries.qml` — every battery UPower knows, read from `upower -d`
+  (mice often report only a coarse level, which Quickshell's UPower
+  service hides); warns once when one runs low and puts a laptop on
+  power saver at 20% until it charges.
 - `TogglePill.qml` — the quick-settings pill, shared by the command
   menu and the picker's Effects row.
 - `Sys.qml` — caps lock read from `/sys/class/leds/*capslock`, popups

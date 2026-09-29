@@ -101,6 +101,7 @@ Everything else is stock Debian:
 | `network-manager-config-connectivity-debian` | Lets the network icon tell "no internet" and hotel/café sign-in pages from a working connection |
 | `btop`                        | The metrics card's full view         |
 | `qrencode`                    | The network app's Share Wi-Fi QR code |
+| `fastfetch`                   | The launcher's "About this system"   |
 
 > 💡 _Themes by [vinceliuice](https://github.com/vinceliuice) — Orchis (GTK) and Colloid (icons)._
 
@@ -133,9 +134,13 @@ toggles for blur, shadows and animations, an unfocused-window opacity
 slider (they all change under your cursor and stick), the bar's own
 height and scale, and **popup size**: every popup, the launcher and the
 network app grow together (handy on 1440p and 4K screens, or for older
-eyes). The **command menu** holds the toggles that
-don't earn a bar module: power profile, keep-awake, night light, DND, a
-pomodoro, screen off.
+eyes). The **command menu** (far right) is in sections: **Batteries** — the
+laptop's (with time left, draw and health) plus wireless mice, keyboards
+and headsets, with a warning when one runs low and power saver switched on
+by itself when a laptop drops to 20%; **Quick settings** — power profile,
+keep awake, microphone, night light, do not disturb, Bluetooth and a focus
+timer, each tile saying what it is and its state; and **System** —
+notifications, check updates, keybindings, restart bar, power menu.
 
 Details in [`config/quickshell/README.md`](config/quickshell/README.md).
 

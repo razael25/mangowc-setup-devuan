@@ -2,17 +2,20 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Command menu: quick actions that have NO other bar surface — power
-// profile, keep-awake, mic mute, night light, bluetooth power, brightness
-// (laptops), pomodoro, updates, screen off, power menu. The rule: the bar shows
-// state, this menu holds actions that would otherwise each need a whole
-// new bar widget. Stateful glanceable things (volume, network, DND,
-// media) keep their own modules and never appear here.
-// Quick-settings layout: toggle pills in a 2-col grid (filled = on,
-// right-click = the full external tool where one exists), sliders under
-// them, then launcher rows. Toggles stay open so the state change is
-// visible; launchers close. A running pomodoro puts its countdown on
-// this pill itself — glanceable without a dedicated module.
+// Command menu, in sections:
+//   Batteries — anything UPower knows with a battery (laptop, wireless
+//     mouse/keyboard, headset…), only when there is one (Batteries.qml)
+//   Quick settings — two-line tiles, name over state (QuickTile): power
+//     profile, keep awake, microphone, night light, do not disturb,
+//     Bluetooth (with an adapter), focus timer (− / + set its length).
+//     Filled = on, red = a state you shouldn't forget (mic muted, DND);
+//     right-click = the fuller tool (mixer, notification history, network
+//     app). Toggles stay open so the change is visible.
+//   brightness slider on laptops
+//   System — notifications, check updates, keybindings, restart bar,
+//     power menu; these close the menu.
+// A running focus timer puts its countdown on this module itself —
+// glanceable without a dedicated one.
 BarModule {
     id: root
 
@@ -40,6 +43,8 @@ BarModule {
     property bool nightLight: false
     property bool hasBacklight: false
     property int brightness: 50
+    property bool btPresent: false
+    property bool btOn: false
 
     Process {
         id: stateProc
@@ -50,7 +55,8 @@ BarModule {
             "\"$(powerprofilesctl get 2>/dev/null)\" " +
             "\"$(brightnessctl -m -c backlight 2>/dev/null | head -n1)\" " +
             "\"$(pgrep -f '[w]hy=quickshell-caffeine' >/dev/null && echo awake)\" " +
-            "\"$(pgrep -x wlsunset >/dev/null && echo night)\""]
+            "\"$(pgrep -x wlsunset >/dev/null && echo night)\" " +
+            "\"$(bluetoothctl show 2>/dev/null | awk '/Powered:/ { print $2; exit }')\""]
         stdout: StdioCollector {
             onStreamFinished: {
                 const lines = text.split("\n")
@@ -62,12 +68,30 @@ BarModule {
                     root.brightness = parseInt(bl[3]) || root.brightness
                 root.caffeine = lines[2] === "awake"
                 root.nightLight = lines[3] === "night"
+                // "yes"/"no" from a controller; empty = no adapter
+                root.btPresent = (lines[4] ?? "") !== ""
+                root.btOn = lines[4] === "yes"
             }
         }
     }
 
     readonly property var profileOrder: ["performance", "balanced", "power-saver"]
     readonly property var profileIcons: ({ performance: "󰓅", balanced: "󰾅", "power-saver": "󰾆" })
+    readonly property var profileNames: ({ performance: "Performance", balanced: "Balanced", "power-saver": "Power saver" })
+
+    function toggleBluetooth() {
+        root.btOn = !root.btOn
+        Quickshell.execDetached(["bluetoothctl", "power", root.btOn ? "on" : "off"])
+    }
+
+    // the bar's section heading (LayoutPicker's)
+    component SectionLabel: Text {
+        color: Theme.accent
+        font.family: Theme.fontFamily
+        font.pixelSize: 12
+        font.bold: true
+        topPadding: 6
+    }
 
     function cycleProfile() {
         const next = profileOrder[(profileOrder.indexOf(profile) + 1) % profileOrder.length]
@@ -224,10 +248,13 @@ BarModule {
     Popout {
         id: menu
         anchorItem: root
-        cardWidth: 270
+        cardWidth: 350
         cardHeight: col.implicitHeight + 2 * cardPadding
 
-        onVisibleChanged: if (visible) stateProc.running = true
+        onVisibleChanged: if (visible) {
+            stateProc.running = true
+            Batteries.refresh()
+        }
 
         // scriptable open/close: qs -p ~/.config/suckless/quickshell ipc call commands toggle
         IpcHandler {
@@ -241,6 +268,83 @@ BarModule {
             anchors.right: parent.right
             spacing: 6
 
+            // --- Batteries: only when something reports one ---
+            SectionLabel {
+                visible: Batteries.devices.length > 0
+                topPadding: 0
+                text: "Batteries"
+            }
+
+            Repeater {
+                model: Batteries.devices
+
+                Item {
+                    id: bat
+                    required property var modelData
+                    readonly property bool low: Batteries.isLow(modelData) && !modelData.charging
+                    readonly property string more: Batteries.detail(modelData)
+                    width: parent.width
+                    height: more !== "" ? 36 : 24
+
+                    Text {
+                        id: batGlyph
+                        anchors.left: parent.left
+                        anchors.leftMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 18
+                        horizontalAlignment: Text.AlignHCenter
+                        text: Batteries.glyph(bat.modelData)
+                        color: bat.low ? Theme.red : Theme.cyan
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 15
+                    }
+                    Column {
+                        anchors.left: batGlyph.right
+                        anchors.leftMargin: 10
+                        anchors.right: batCharge.left
+                        anchors.rightMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 1
+                        Text {
+                            width: parent.width
+                            text: bat.modelData.name
+                            color: Qt.alpha(Theme.fg, 0.9)
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            visible: bat.more !== ""
+                            width: parent.width
+                            text: bat.more
+                            color: Qt.alpha(Theme.fg, 0.5)
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            elide: Text.ElideRight
+                        }
+                    }
+                    Text {
+                        id: batCharge
+                        anchors.right: parent.right
+                        anchors.rightMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: Batteries.charge(bat.modelData)
+                        color: bat.low ? Theme.red
+                             : bat.modelData.pct < 0 && bat.modelData.level === "unknown" ? Qt.alpha(Theme.fg, 0.4)
+                             : Theme.fg
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                        font.bold: bat.low
+                    }
+                }
+            }
+
+            // --- Quick settings ---
+            SectionLabel {
+                topPadding: Batteries.devices.length > 0 ? 6 : 0
+                text: "Quick settings"
+            }
+
             Grid {
                 width: parent.width
                 columns: 2
@@ -248,11 +352,13 @@ BarModule {
 
                 Repeater {
                     model: [
-                        { icon: root.profileIcons[root.profile],
-                          label: root.profile,
+                        { icon: root.profileIcons[root.profile] ?? "󰾅",
+                          name: "Power profile",
+                          state: root.profileNames[root.profile] ?? root.profile,
                           active: root.profile !== "balanced",
                           run: () => root.cycleProfile() },
-                        { icon: "󰅶", label: "Keep awake",
+                        { icon: "󰅶", name: "Keep awake",
+                          state: root.caffeine ? "On" : "Off",
                           active: root.caffeine,
                           run: () => {
                               root.caffeine = !root.caffeine
@@ -260,12 +366,16 @@ BarModule {
                                   ? "systemd-inhibit --what=idle --who=quickshell --why=quickshell-caffeine sleep infinity >/dev/null 2>&1 &"
                                   : "pkill -f '[w]hy=quickshell-caffeine'"])
                           } },
-                        { icon: Sys.micMuted ? "󰍭" : "󰍬",
-                          label: Sys.micMuted ? "Muted" : "Mic",
-                          active: Sys.micMuted, alert: Sys.micMuted,
-                          alt: ["pavucontrol", "-t", "4"],
+                        { icon: Sys.micMuted ? "󰍭" : "󰍬", name: "Microphone",
+                          state: Sys.micMuted ? "Muted" : "On",
+                          alert: Sys.micMuted,
+                          altFn: () => {
+                              menu.visible = false
+                              Quickshell.execDetached(["pavucontrol", "-t", "4"])
+                          },
                           run: () => Sys.toggleMicMute() },
-                        { icon: "󱩌", label: "Night light",
+                        { icon: "󱩌", name: "Night light",
+                          state: root.nightLight ? "On" : "Off",
                           active: root.nightLight,
                           run: () => {
                               root.nightLight = !root.nightLight
@@ -273,22 +383,31 @@ BarModule {
                                   ? "command -v wlsunset >/dev/null && (wlsunset -t 4500 -T 6500 >/dev/null 2>&1 &) || notify-send -a quickshell 'Night light' 'Install wlsunset: sudo apt install wlsunset'"
                                   : "pkill -x wlsunset"])
                           } },
-                        { icon: Sys.dndOn ? "󰂛" : "󰂚",
-                          label: "DND",
-                          active: Sys.dndOn, alert: Sys.dndOn,
+                        { icon: Sys.dndOn ? "󰂛" : "󰂚", name: "Do not disturb",
+                          state: Sys.dndOn ? "On" : "Off",
+                          alert: Sys.dndOn,
                           altFn: () => {
                               menu.visible = false
                               notifHistory.visible = true
                           },
                           run: () => Sys.toggleDnd() },
-                        { icon: "󰔟",
-                          label: root.pomoRunning ? "Stop" : root.pomoMinutes + " min",
+                        root.btPresent ? {
+                          icon: root.btOn ? "󰂯" : "󰂲", name: "Bluetooth",
+                          state: root.btOn ? "On" : "Off",
+                          active: root.btOn,
+                          altFn: () => {
+                              menu.visible = false
+                              Quickshell.execDetached([Theme.configDir + "/scripts/network"])
+                          },
+                          run: () => root.toggleBluetooth() } : null,
+                        { icon: "󰔟", name: "Focus timer",
+                          state: root.pomoRunning ? root.fmtPomo(root.pomoLeft) + " left"
+                                                  : root.pomoMinutes + " min",
                           active: root.pomoRunning,
-                          altFn: () => root.cyclePomoPreset(),
-                          onScroll: dir => root.nudgePomo(dir),
+                          adjust: root.pomoRunning ? null : dir => root.nudgePomo(dir),
                           run: () => root.togglePomodoro() }
-                    ]
-                    TogglePill { closeFn: () => menu.visible = false }
+                    ].filter(t => t)
+                    QuickTile {}
                 }
             }
 
@@ -303,15 +422,13 @@ BarModule {
                 persistFn: v => {}   // hardware remembers; nothing to persist
             }
 
-            Rectangle {
-                width: parent.width - 8
-                anchors.horizontalCenter: parent.horizontalCenter
-                height: 1
-                color: Qt.alpha(Theme.fg, 0.15)
-            }
+            // --- System ---
+            SectionLabel { text: "System" }
 
             Repeater {
                 model: [
+                    { icon: "󰂚", label: "Notifications",
+                      run: () => notifHistory.visible = true },
                     { icon: "󰚰", label: "Check updates",
                       run: () => Quickshell.execDetached(["kitty", "-e", "sh", "-c",
                           "sudo apt update && apt list --upgradable; " +
@@ -320,8 +437,6 @@ BarModule {
                       run: () => keybinds.visible = true },
                     { icon: "󰑓", label: "Restart bar",
                       run: () => Quickshell.execDetached([Theme.configDir + "/scripts/bar", "restart"]) },
-                    { icon: "󰌢", label: "Screen off",
-                      run: () => Quickshell.execDetached([Theme.configDir + "/scripts/screen-off"]) },
                     { icon: "󰐥", label: "Power menu",
                       run: () => power.visible = true }
                 ]

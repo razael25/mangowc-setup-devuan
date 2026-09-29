@@ -1,6 +1,7 @@
 singleton Theme Theme.qml
 singleton Wm Wm.qml
 singleton Sys Sys.qml
+singleton Batteries Batteries.qml
 Bar Bar.qml
 BarModule BarModule.qml
 Tags Tags.qml
@@ -35,3 +36,4 @@ KeybindsPopup KeybindsPopup.qml
 PowerPopup PowerPopup.qml
 MetricsPopup MetricsPopup.qml
 LauncherPopup LauncherPopup.qml
+QuickTile QuickTile.qml
