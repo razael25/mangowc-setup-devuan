@@ -85,8 +85,12 @@ icon theme in as `QS_ICON_THEME` (quickshell doesn't follow it itself).
   config, about) are searchable too and have their own chip; most open
   their popup over IPC, reload goes through `Wm.reloadConfig()`. `scripts/launcher` opens it and falls back to rofi when
   the bar isn't running.
-- `MetricsPopup.qml` — click CPU/RAM/disk: CPU and RAM meters, then the
-  busiest programs. `scripts/procs` prints a /proc snapshot (plain awk,
+- `MetricsPopup.qml` — click CPU/RAM/disk: CPU and RAM meters, one
+  temperature each for CPU / GPU / drive (hwmon: k10temp or coretemp,
+  amdgpu, nvme; missing ones skipped), a meter per local disk and its
+  read / write rate (`scripts/sysinfo`), network mounts asked separately
+  with a time limit (an unreachable NAS says so instead of hanging the
+  card), then the busiest programs. `scripts/procs` prints a /proc snapshot (plain awk,
   nothing WM-specific); the card diffs two of them for current CPU, as a
   share of the whole machine, grouped by program. Samples only while
   open. Right-click the module, or the card's button, opens btop.

@@ -121,7 +121,7 @@ single `mmsg watch` stream — no polling, no patch — and clicks go back throu
 | Layout      | layout + tweaks picker   | (empty bar: same)       | cycle layouts  |
 | Media       | play / pause             | now-playing popup       | prev / next    |
 | Weather     | 3-day forecast           | location / units        | —              |
-| CPU / RAM   | what's using it (top programs) | btop              | —              |
+| CPU / RAM   | meters, temperatures, disks (NAS included), disk activity, top programs | btop | — |
 | Volume      | volume popup: output + picker, microphone + live meter, per-app volume, pavucontrol | mute | ±2% |
 | Network     | network app: your connection + ping/speed/IP, VPN, known & other Wi-Fi, Bluetooth (the login page while it says "sign in") | nm-connection-editor | —  |
 | Clock       | calendar                 | —                       | —              |
@@ -239,6 +239,7 @@ still shows you which window is live. The opacity slider needs mangowc
 │   ├── changevolume      # volume + notifications
 │   ├── keybinds          # config.conf's binds for the keybinds popup
 │   ├── procs             # /proc snapshot for the metrics card
+│   ├── sysinfo           # disks, disk activity and temperatures for it
 │   ├── launcher          # opens the app grid (rofi if the bar is down)
 │   ├── power / network
 ├── quickshell/           # the bar (see its README)
