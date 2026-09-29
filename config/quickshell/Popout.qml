@@ -77,12 +77,16 @@ PanelWindow {
         }
         width: root.cardWidth
         height: root.cardHeight
-        radius: 12
-        // a touch translucent while mango blurs behind layers, so the
-        // card frosts over the desktop; solid again when blur is off
-        color: Wm.blur ? Qt.alpha(Theme.bg, 0.86) : Theme.bg
-        border.width: 1
-        border.color: Qt.alpha(Theme.accent, 0.4)
+        // Centered popups (launcher, keybinds, power) look like mango's
+        // floating windows, the network app among them: its focus border
+        // (accent, the border-width slider's width) and corner radius, solid.
+        // Drop-downs stay light: thin border, rounder, and a touch
+        // translucent while mango blurs behind layers so the card frosts
+        // over the desktop (solid again when blur is off).
+        radius: root.centered ? Theme.barRadius : 12
+        color: !root.centered && Wm.blur ? Qt.alpha(Theme.bg, 0.86) : Theme.bg
+        border.width: root.centered ? Wm.borderpx : 1
+        border.color: root.centered ? Theme.accent : Qt.alpha(Theme.accent, 0.4)
 
         Behavior on color { ColorAnimation { duration: 250 } }
 
