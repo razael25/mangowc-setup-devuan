@@ -3,30 +3,46 @@ import Quickshell
 import Quickshell.Io
 
 // Network — a small connectivity front-end (nmcli + bluetoothctl
-// underneath) in its own quickshell instance. Device status + wifi radio
-// toggle up top, bluetooth power + paired devices (click to connect/
-// disconnect; "pair new" scans and pairs PIN-less devices — anything
-// needing a PIN is blueman's job), scannable wifi list below: click a
-// network to connect (inline password field for new secured networks),
-// click the active one to disconnect. The bluetooth section only renders
-// when an adapter exists.
+// underneath) in its own quickshell instance, laid out by what you came
+// to do:
+//   the connection you're on (name, status, Wi-Fi switch) and how it's
+//   doing (ping, loss, speed, IP, gateway) — then VPNs — then Wi-Fi you've
+//   used before (one click to join) and new networks (inline password) —
+//   then Bluetooth (click to connect/disconnect, right-click to forget,
+//   "pair new" for PIN-less devices; anything needing a PIN is blueman's
+//   job; hidden without an adapter) — then rescan / advanced settings.
+// The window sizes to its content, up to 80% of the screen, and scrolls.
 ShellRoot {
     FloatingWindow {
         id: win
 
         title: "Network"
-        implicitWidth: 430
-        implicitHeight: 640
+        implicitWidth: 440
+        implicitHeight: Math.min(content.implicitHeight + 32,
+                                 (screen ? screen.height : 1080) * 0.8)
         color: Theme.bg
+
+        // mango sizes a floating window once, when it maps, so it maps only
+        // after the first round of data is in (or after 1.5s regardless):
+        // it opens at its real size instead of a header-only strip
+        property int _loaded: 0
+        readonly property bool ready: _loaded >= 3
+        visible: ready
+        Timer {
+            interval: 1500
+            running: !win.ready
+            onTriggered: win._loaded = 3
+        }
 
         // closing the window (super+q etc.) must end the process too, or the
         // bar's toggle script sees a headless instance and gets out of sync
-        onVisibleChanged: if (!visible) Qt.quit()
+        onVisibleChanged: if (!visible && ready) Qt.quit()
 
         property var devices: []    // {dev, type, state, conn}
         property bool wifiOn: false
-        property var nets: []       // {inUse, signal, security, ssid}
-        property var savedWifi: []  // saved connection names
+        property var nets: []       // {inUse, signal, security, ssid, freq}
+        property var savedWifi: []  // SSIDs of saved Wi-Fi profiles
+        property var savedUuid: ({}) // SSID → profile UUID (profile names often aren't the SSID)
         property bool scanning: false
         property bool busy: false
         property string status: ""
@@ -37,6 +53,24 @@ ShellRoot {
                 if (d.type === "wifi") return d.dev
             return ""
         }
+
+        // the connection this machine is using: a connected ethernet/wifi
+        // device, the one holding the default route when there are two
+        property string defaultDev: ""
+        property var addrs: ({})           // dev → {ip, gateway}
+        property string connectivity: "unknown"
+        readonly property var primary: {
+            const up = devices.filter(d => d.state === "connected")
+            return up.find(d => d.dev === defaultDev) ?? up[0] ?? null
+        }
+        readonly property var currentNet: nets.find(n => n.inUse) ?? null
+        readonly property var knownNets: nets.filter(n => n.inUse || savedWifi.indexOf(n.ssid) !== -1)
+        readonly property var otherNets: nets.filter(n => !n.inUse && savedWifi.indexOf(n.ssid) === -1)
+
+        // ping 1.1.1.1 while the window is open: the one number that says
+        // "the connection feels bad"
+        property real pingMs: -1
+        property int lossPct: -1
 
         property bool btPresent: false
         property bool btOn: false
@@ -50,11 +84,12 @@ ShellRoot {
             devProc.running = true
             radioProc.running = true
             savedProc.running = true
+            detailsProc.running = true
             btShowProc.running = true
             btDevsProc.running = true
             scanning = true
             scanProc.command = ["sh", "-c",
-                "nmcli -t -f IN-USE,SIGNAL,SECURITY,SSID dev wifi list --rescan "
+                "nmcli -t -f IN-USE,SIGNAL,SECURITY,FREQ,SSID dev wifi list --rescan "
                 + (rescan ? "yes" : "no")]
             scanProc.running = true
         }
@@ -62,8 +97,8 @@ ShellRoot {
         function connectTo(net) {
             if (net.inUse) {
                 run(["nmcli", "d", "disconnect", wifiDev], "disconnecting…")
-            } else if (savedWifi.indexOf(net.ssid) !== -1) {
-                run(["nmcli", "c", "up", "id", net.ssid], "connecting to " + net.ssid + "…")
+            } else if (savedUuid[net.ssid]) {
+                run(["nmcli", "c", "up", "uuid", savedUuid[net.ssid]], "connecting to " + net.ssid + "…")
             } else if (net.security === "" || net.security === "--") {
                 run(["nmcli", "dev", "wifi", "connect", net.ssid],
                     "connecting to " + net.ssid + "…")
@@ -117,8 +152,12 @@ ShellRoot {
                 }
             }
             onRunningChanged: {
-                if (running) win._devs = []
-                else win.devices = win._devs
+                if (running) {
+                    win._devs = []
+                } else {
+                    win.devices = win._devs
+                    if (!win.ready) win._loaded++
+                }
             }
         }
 
@@ -130,23 +169,102 @@ ShellRoot {
             }
         }
 
+        // default-route device, then address + gateway of every connected
+        // ethernet/wifi device, then NetworkManager's connectivity verdict
+        Process {
+            id: detailsProc
+            command: ["sh", "-c",
+                "echo \"default:$(ip route show default 2>/dev/null | " +
+                "awk '{for (i = 1; i < NF; i++) if ($i == \"dev\") { print $(i + 1); exit }}')\"; " +
+                "nmcli -t -f DEVICE,TYPE,STATE d | while IFS=: read -r d t s; do " +
+                "  case \"$t:$s\" in ethernet:connected|wifi:connected) ;; *) continue ;; esac; " +
+                "  echo \"dev:$d:$(cat /sys/class/net/$d/speed 2>/dev/null)\"; " +
+                "  nmcli -g IP4.ADDRESS,IP4.GATEWAY device show \"$d\"; " +
+                "done; " +
+                "echo \"conn:$(nmcli networking connectivity)\""]
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    const lines = text.split("\n")
+                    const addrs = {}
+                    for (let i = 0; i < lines.length; i++) {
+                        const l = lines[i]
+                        if (l.startsWith("default:"))
+                            win.defaultDev = l.slice(8)
+                        else if (l.startsWith("conn:"))
+                            win.connectivity = l.slice(5) || "unknown"
+                        else if (l.startsWith("dev:")) {
+                            // dev:<name>:<link Mb/s>, then "10.0.0.5/24 | fe80::…"
+                            // (first address, no prefix) and the gateway
+                            const f = l.split(":")
+                            const ip = (lines[i + 1] ?? "").split("|")[0].trim().split("/")[0]
+                            addrs[f[1]] = { ip: ip, gateway: (lines[i + 2] ?? "").trim(),
+                                            speed: parseInt(f[2]) || 0 }
+                            i += 2
+                        }
+                    }
+                    win.addrs = addrs
+                }
+            }
+        }
+
+        Timer {
+            interval: 5000
+            running: true
+            repeat: true
+            onTriggered: detailsProc.running = true
+        }
+
+        Process {
+            id: pingProc
+            command: ["ping", "-n", "-q", "-c", "5", "-i", "0.2", "-W", "1", "1.1.1.1"]
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    const loss = text.match(/(\d+(?:\.\d+)?)% packet loss/)
+                    const rtt = text.match(/= [\d.]+\/([\d.]+)\//)
+                    win.lossPct = loss ? Math.round(parseFloat(loss[1])) : -1
+                    win.pingMs = rtt ? parseFloat(rtt[1]) : -1
+                }
+            }
+        }
+
+        Timer {
+            interval: 4000
+            running: win.primary !== null
+            repeat: true
+            triggeredOnStart: true
+            onTriggered: pingProc.running = true
+        }
+
         property var vpns: []   // {name, active}
-        property var _saved: []
+        property var _saved: ({})
         property var _vpns: []
+        // saved profiles: Wi-Fi ones by the SSID they join (a profile named
+        // "Wi-Fi connection 1" is still Frontier5408), VPNs by name.
+        // Terse nmcli escapes ":" as "\:"; the name/SSID comes last.
         Process {
             id: savedProc
-            command: ["nmcli", "-t", "-f", "NAME,TYPE,ACTIVE", "c", "show"]
+            command: ["sh", "-c",
+                "nmcli -t -f UUID,TYPE,ACTIVE,NAME c show | while IFS=: read -r uuid type active name; do " +
+                "  case \"$type\" in " +
+                "    *wireless*) echo \"wifi:$uuid:$(nmcli -g 802-11-wireless.ssid c show \"$uuid\")\" ;; " +
+                "    vpn|wireguard|tun) echo \"$type:$active:$name\" ;; " +
+                "  esac; " +
+                "done"]
             stdout: SplitParser {
                 onRead: line => {
                     const p = line.split(":")
                     if (p.length < 3)
                         return
-                    const active = p[p.length - 1] === "yes"
-                    const type = p[p.length - 2]
-                    const name = p.slice(0, p.length - 2).join(":")
-                    if (type.indexOf("wireless") !== -1)
-                        win._saved.push(name)
-                    else if (type === "vpn" || type === "wireguard")
+                    const type = p[0]
+                    const rest = p.slice(2).join(":").replace(/\\:/g, ":")
+                    if (type === "wifi") {
+                        if (rest !== "")
+                            win._saved[rest] = p[1]
+                        return
+                    }
+                    const active = p[1] === "yes"
+                    const name = rest
+                    if (type === "vpn" || type === "wireguard")
                         win._vpns.push({ name: name, active: active,
                                          external: false })
                     // a "tun" connection is an auto-generated profile for an
@@ -159,11 +277,13 @@ ShellRoot {
             }
             onRunningChanged: {
                 if (running) {
-                    win._saved = []
+                    win._saved = {}
                     win._vpns = []
                 } else {
-                    win.savedWifi = win._saved
+                    win.savedUuid = win._saved
+                    win.savedWifi = Object.keys(win._saved)
                     win.vpns = win._vpns
+                    if (!win.ready) win._loaded++
                 }
             }
         }
@@ -173,14 +293,16 @@ ShellRoot {
             id: scanProc
             stdout: SplitParser {
                 onRead: line => {
+                    // IN-USE:SIGNAL:SECURITY:FREQ:SSID — SSID last, so any
+                    // (escaped) colons in it stay in one piece
                     const p = line.split(":")
-                    if (p.length < 4)
+                    if (p.length < 5)
                         return
-                    const ssid = p.slice(3).join(":").replace(/\\:/g, ":")
+                    const ssid = p.slice(4).join(":").replace(/\\:/g, ":")
                     if (ssid === "")
                         return
                     win._nets.push({ inUse: p[0] === "*", signal: parseInt(p[1]) || 0,
-                                     security: p[2], ssid: ssid })
+                                     security: p[2], freq: parseInt(p[3]) || 0, ssid: ssid })
                 }
             }
             onRunningChanged: {
@@ -196,12 +318,21 @@ ShellRoot {
                     win.nets = Object.values(best)
                         .sort((a, b) => (b.inUse - a.inUse) || (b.signal - a.signal))
                     win.scanning = false
+                    if (!win.ready) win._loaded++
                 }
             }
         }
 
         function sigGlyph(s) {
             return s < 20 ? "󰤯" : s < 45 ? "󰤟" : s < 70 ? "󰤢" : s < 88 ? "󰤥" : "󰤨"
+        }
+
+        function band(freq) {
+            return freq >= 5925 ? "6 GHz" : freq >= 4900 ? "5 GHz" : freq > 0 ? "2.4 GHz" : ""
+        }
+
+        function secured(n) {
+            return n.security !== "" && n.security !== "--"
         }
 
         // --- live per-device throughput (only while the window is open) ---
@@ -248,8 +379,8 @@ ShellRoot {
 
         function fmtRate(b) {
             return b < 1024 ? Math.round(b) + " B/s"
-                 : b < 1048576 ? (b / 1024).toFixed(b < 102400 ? 1 : 0) + " K/s"
-                 : (b / 1048576).toFixed(1) + " M/s"
+                 : b < 1048576 ? (b / 1024).toFixed(b < 102400 ? 1 : 0) + " KB/s"
+                 : (b / 1048576).toFixed(1) + " MB/s"
         }
         // keyed by interface name — vpn rows match only when the profile
         // name IS the device (tun/tailscale0), which is exactly right
@@ -257,6 +388,38 @@ ShellRoot {
             const r = netRates[dev]
             return r ? "↓ " + fmtRate(r.down) + "  ↑ " + fmtRate(r.up) : ""
         }
+
+        // --- the header's words ---
+
+        readonly property string headerName: !primary ? "Not connected"
+            : primary.type === "wifi" ? (currentNet ? currentNet.ssid : primary.conn)
+            : "Ethernet"
+        readonly property string headerIcon: !primary ? "󰤮"
+            : primary.type === "wifi" ? sigGlyph(currentNet ? currentNet.signal : 100)
+            : "󰈀"
+        readonly property string headerStatus: {
+            if (!primary)
+                return wifiDev === "" ? "no network cable or Wi-Fi"
+                     : wifiOn ? "pick a network below" : "Wi-Fi is off"
+            if (connectivity === "portal")
+                return "sign-in required · click to open the login page"
+            if (connectivity === "limited" || connectivity === "none")
+                return "connected · no internet"
+            const bits = ["connected"]
+            if (primary.type === "wifi" && currentNet) {
+                if (band(currentNet.freq)) bits.push(band(currentNet.freq))
+                bits.push(currentNet.signal + "%")
+            } else {
+                const mbps = addrs[primary.dev]?.speed ?? 0
+                if (mbps > 0)
+                    bits.push(mbps >= 1000 ? (mbps / 1000) + " Gbps" : mbps + " Mbps")
+            }
+            return bits.join(" · ")
+        }
+        readonly property color headerColor: !primary ? Theme.disabled
+            : connectivity === "portal" ? Theme.accent
+            : (connectivity === "limited" || connectivity === "none") ? Theme.alert
+            : Theme.accent
 
         // --- bluetooth (bluetoothctl underneath) ---
 
@@ -379,12 +542,100 @@ ShellRoot {
             btFound = btFound.filter(f => f.mac !== d.mac)
         }
 
+        // --- UI pieces ---
+
+        component Toggle: Rectangle {
+            property bool on: false
+            property color onColor: Theme.accent
+            signal toggled()
+            width: 38
+            height: 20
+            radius: 10
+            color: on ? onColor : Qt.alpha(Theme.fg, 0.15)
+            Behavior on color { ColorAnimation { duration: 150 } }
+
+            Rectangle {
+                x: parent.on ? parent.width - width - 3 : 3
+                anchors.verticalCenter: parent.verticalCenter
+                width: 14; height: 14; radius: 7
+                color: parent.on ? Theme.bg : Qt.alpha(Theme.fg, 0.7)
+                Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+            }
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: parent.toggled()
+            }
+        }
+
+        component SectionLabel: Text {
+            topPadding: 6
+            color: Qt.alpha(Theme.fg, 0.5)
+            font.family: Theme.fontFamily
+            font.pixelSize: 11
+            font.bold: true
+            font.capitalization: Font.AllUppercase
+            font.letterSpacing: 1
+        }
+
+        component Divider: Rectangle {
+            width: parent.width
+            height: 1
+            color: Qt.alpha(Theme.fg, 0.1)
+        }
+
+        component SmallButton: Rectangle {
+            property string label
+            signal clicked()
+            width: btnText.implicitWidth + 20
+            height: 26
+            radius: 8
+            color: Qt.alpha(Theme.fg, btnMa.containsMouse ? 0.18 : 0.08)
+            Text {
+                id: btnText
+                anchors.centerIn: parent
+                text: parent.label
+                color: Theme.fg
+                font.family: Theme.fontFamily
+                font.pixelSize: 11
+            }
+            MouseArea {
+                id: btnMa
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: parent.clicked()
+            }
+        }
+
+        // label / value, twice per row
+        component Stat: Item {
+            property string label
+            property string value
+            width: parent.width / 2 - 8
+            height: 20
+            Text {
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                text: parent.label
+                color: Qt.alpha(Theme.fg, 0.5)
+                font.family: Theme.fontFamily
+                font.pixelSize: 12
+            }
+            Text {
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                text: parent.value
+                color: Theme.fg
+                font.family: Theme.fontFamily
+                font.pixelSize: 12
+            }
+        }
+
         // --- UI ---
 
-        Column {
+        Item {
             anchors.fill: parent
-            anchors.margins: 16
-            spacing: 8
 
             // Escape: cancel an open password prompt first, quit otherwise.
             // Keys on the content root, not a Shortcut (those never fire in
@@ -398,524 +649,541 @@ ShellRoot {
                     Qt.quit()
             }
 
-            // header
-            Item {
-                width: parent.width
-                height: 26
+            Flickable {
+                anchors.fill: parent
+                anchors.margins: 16
+                contentHeight: content.implicitHeight
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
 
-                Text {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Network"
-                    color: Theme.fg
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 16
-                    font.bold: true
-                }
-
-                Rectangle {
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 84
-                    height: 24
-                    radius: 8
-                    color: Qt.alpha(Theme.fg, scanMa.containsMouse ? 0.18 : 0.1)
-                    Text {
-                        anchors.centerIn: parent
-                        text: win.scanning ? "scanning…" : "rescan"
-                        color: Theme.fg
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-                    MouseArea {
-                        id: scanMa
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: win.refresh(true)
-                    }
-                }
-            }
-
-            // devices
-            Repeater {
-                model: win.devices
-
-                Item {
-                    id: devRow
-                    required property var modelData
+                Column {
+                    id: content
                     width: parent.width
-                    height: 30
+                    spacing: 8
 
+                    // the connection you're on
+                    Item {
+                        width: parent.width
+                        height: 48
+
+                        Text {
+                            id: heroIcon
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: win.headerIcon
+                            color: win.headerColor
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 30
+                        }
+
+                        Column {
+                            anchors.left: heroIcon.right
+                            anchors.leftMargin: 14
+                            anchors.right: heroToggle.left
+                            anchors.rightMargin: 56
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 3
+
+                            Text {
+                                width: parent.width
+                                text: win.headerName
+                                color: Theme.fg
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 17
+                                font.bold: true
+                                elide: Text.ElideRight
+                            }
+                            Text {
+                                width: parent.width
+                                text: win.headerStatus
+                                color: win.connectivity === "portal" || win.connectivity === "limited"
+                                       || win.connectivity === "none" ? win.headerColor
+                                     : Qt.alpha(Theme.fg, 0.55)
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                                elide: Text.ElideRight
+
+                                // sign-in page: any plain-http request lands on it
+                                MouseArea {
+                                    anchors.fill: parent
+                                    enabled: win.connectivity === "portal"
+                                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    onClicked: Quickshell.execDetached(["xdg-open", "http://neverssl.com"])
+                                }
+                            }
+                        }
+
+                        Text {
+                            visible: heroToggle.visible
+                            anchors.right: heroToggle.left
+                            anchors.rightMargin: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "Wi-Fi"
+                            color: Qt.alpha(Theme.fg, 0.5)
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                        }
+
+                        Toggle {
+                            id: heroToggle
+                            visible: win.wifiDev !== ""
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            on: win.wifiOn
+                            onToggled: win.run(["nmcli", "radio", "wifi", win.wifiOn ? "off" : "on"],
+                                               win.wifiOn ? "Wi-Fi off" : "Wi-Fi on")
+                        }
+                    }
+
+                    // how it's doing
+                    Grid {
+                        visible: win.primary !== null
+                        width: parent.width
+                        columns: 2
+                        columnSpacing: 16
+                        rowSpacing: 4
+                        topPadding: 4
+
+                        Stat {
+                            label: "Ping"
+                            value: win.pingMs >= 0 ? Math.round(win.pingMs) + " ms"
+                                 : win.lossPct === 100 ? "no reply" : "…"
+                        }
+                        Stat {
+                            label: "Packet loss"
+                            value: win.lossPct >= 0 ? win.lossPct + "%" : "…"
+                        }
+                        Stat {
+                            label: "Receiving"
+                            value: win.primary && win.netRates[win.primary.dev]
+                                   ? win.fmtRate(win.netRates[win.primary.dev].down) : "…"
+                        }
+                        Stat {
+                            label: "Sending"
+                            value: win.primary && win.netRates[win.primary.dev]
+                                   ? win.fmtRate(win.netRates[win.primary.dev].up) : "…"
+                        }
+                        Stat {
+                            label: "IP address"
+                            value: win.primary ? (win.addrs[win.primary.dev]?.ip || "—") : "—"
+                        }
+                        Stat {
+                            label: "Gateway"
+                            value: win.primary ? (win.addrs[win.primary.dev]?.gateway || "—") : "—"
+                        }
+                    }
+
+                    // the plumbing, small: interface and profile name
                     Text {
-                        id: devName
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: (devRow.modelData.type === "wifi" ? "󰖩  " : "󰈀  ")
-                            + devRow.modelData.dev
-                        color: Theme.fg
+                        visible: win.primary !== null
+                        width: parent.width
+                        text: win.primary ? win.primary.dev + " · " + win.primary.conn : ""
+                        color: Qt.alpha(Theme.fg, 0.35)
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                        elide: Text.ElideRight
+                    }
+
+                    Divider {}
+
+                    // VPN connections — shield row per saved vpn/wireguard profile
+                    SectionLabel {
+                        visible: win.vpns.length > 0
+                        text: "VPN"
+                    }
+
+                    Repeater {
+                        model: win.vpns
+
+                        Item {
+                            id: vpnRow
+                            required property var modelData
+                            width: parent.width
+                            height: 30
+
+                            Text {
+                                id: vpnName
+                                anchors.left: parent.left
+                                anchors.leftMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "󰦝  " + vpnRow.modelData.name
+                                color: vpnRow.modelData.active ? Theme.green : Theme.fg
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 12
+                            }
+
+                            Text {
+                                visible: vpnRow.modelData.active
+                                anchors.left: vpnName.right
+                                anchors.leftMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: win.rateText(vpnRow.modelData.name)
+                                color: Theme.disabled
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+
+                            Text {
+                                visible: vpnRow.modelData.external
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: vpnRow.modelData.active ? "on · external" : "external"
+                                color: vpnRow.modelData.active ? Theme.green : Theme.disabled
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+
+                            Toggle {
+                                visible: !vpnRow.modelData.external
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                on: vpnRow.modelData.active
+                                onColor: Theme.green
+                                onToggled: win.run(["nmcli", "c",
+                                    vpnRow.modelData.active ? "down" : "up",
+                                    "id", vpnRow.modelData.name],
+                                    (vpnRow.modelData.active ? "disconnecting " : "connecting ")
+                                    + vpnRow.modelData.name + "…")
+                            }
+                        }
+                    }
+
+                    // Wi-Fi: networks you've used before, then new ones
+                    SectionLabel {
+                        visible: win.wifiDev !== "" && win.wifiOn
+                        text: "Known networks"
+                    }
+                    Text {
+                        visible: win.wifiDev !== "" && win.wifiOn && win.knownNets.length === 0
+                        leftPadding: 10
+                        text: win.scanning ? "scanning…" : "none in range"
+                        color: Theme.disabled
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                     }
+                    Repeater {
+                        model: win.wifiOn ? win.knownNets : []
+                        delegate: netDelegate
+                    }
 
+                    SectionLabel {
+                        visible: win.wifiDev !== "" && win.wifiOn
+                        text: "Other networks"
+                    }
                     Text {
-                        visible: devRow.modelData.state === "connected"
-                        anchors.left: devName.right
-                        anchors.leftMargin: 12
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: win.rateText(devRow.modelData.dev)
+                        visible: win.wifiDev !== "" && win.wifiOn && win.otherNets.length === 0
+                        leftPadding: 10
+                        text: win.scanning ? "scanning…" : "none found"
                         color: Theme.disabled
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-
-                    Text {
-                        anchors.right: devRow.modelData.type === "wifi" ? radioPill.left : parent.right
-                        anchors.rightMargin: 12
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: devRow.modelData.state === "connected"
-                            ? devRow.modelData.conn
-                            : devRow.modelData.state
-                        color: devRow.modelData.state === "connected"
-                            ? Theme.green : Theme.disabled
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-
-                    Rectangle {
-                        id: radioPill
-                        visible: devRow.modelData.type === "wifi"
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 34
-                        height: 18
-                        radius: 9
-                        color: win.wifiOn ? Theme.accent : Qt.alpha(Theme.fg, 0.15)
-                        Behavior on color { ColorAnimation { duration: 150 } }
-
-                        Rectangle {
-                            x: win.wifiOn ? parent.width - width - 2 : 2
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 14
-                            height: 14
-                            radius: 7
-                            color: win.wifiOn ? Theme.bg : Qt.alpha(Theme.fg, 0.7)
-                            Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: win.run(["nmcli", "radio", "wifi",
-                                win.wifiOn ? "off" : "on"],
-                                win.wifiOn ? "wifi off" : "wifi on")
-                        }
-                    }
-                }
-            }
-
-            // VPN connections — shield row per saved vpn/wireguard profile
-            Text {
-                visible: win.vpns.length > 0
-                text: "VPN"
-                color: Theme.accent
-                font.family: Theme.fontFamily
-                font.pixelSize: 12
-                font.bold: true
-            }
-
-            Repeater {
-                model: win.vpns
-
-                Item {
-                    id: vpnRow
-                    required property var modelData
-                    width: parent.width
-                    height: 30
-
-                    Text {
-                        id: vpnName
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "󰦝  " + vpnRow.modelData.name
-                        color: vpnRow.modelData.active ? Theme.green : Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                     }
-
-                    Text {
-                        visible: vpnRow.modelData.active
-                        anchors.left: vpnName.right
-                        anchors.leftMargin: 12
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: win.rateText(vpnRow.modelData.name)
-                        color: Theme.disabled
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
+                    Repeater {
+                        model: win.wifiOn ? win.otherNets : []
+                        delegate: netDelegate
                     }
 
-                    Text {
-                        visible: vpnRow.modelData.external
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: vpnRow.modelData.active ? "on · external" : "external"
-                        color: vpnRow.modelData.active ? Theme.green : Theme.disabled
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
+                    // Bluetooth — hidden entirely on machines without an adapter
+                    Item {
+                        visible: win.btPresent
+                        width: parent.width
+                        height: 30
+
+                        SectionLabel {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            topPadding: 0
+                            text: "Bluetooth"
+                        }
+
+                        SmallButton {
+                            visible: win.btOn
+                            anchors.right: btToggle.left
+                            anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: win.btScanning ? "scanning…" : "pair new"
+                            onClicked: win.btScan()
+                        }
+
+                        Toggle {
+                            id: btToggle
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            on: win.btOn
+                            onToggled: win.run(["bluetoothctl", "power", win.btOn ? "off" : "on"],
+                                               win.btOn ? "bluetooth off" : "bluetooth on")
+                        }
                     }
 
-                    Rectangle {
-                        visible: !vpnRow.modelData.external
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 34
-                        height: 18
-                        radius: 9
-                        color: vpnRow.modelData.active ? Theme.green : Qt.alpha(Theme.fg, 0.15)
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                    Repeater {
+                        model: win.btPresent && win.btOn ? win.btDevices : []
 
                         Rectangle {
-                            x: vpnRow.modelData.active ? parent.width - width - 2 : 2
+                            id: btRow
+                            required property var modelData
+                            width: parent.width
+                            height: 32
+                            radius: 8
+                            color: btRow.modelData.connected ? Qt.alpha(Theme.accent, 0.2)
+                                 : btMa.containsMouse ? Qt.alpha(Theme.fg, 0.08)
+                                 : "transparent"
+
+                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 10
+                                anchors.right: btState.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "󰂯  " + btRow.modelData.name
+                                color: btRow.modelData.connected ? Theme.accent : Theme.fg
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 12
+                                font.bold: btRow.modelData.connected
+                                elide: Text.ElideRight
+                            }
+                            Text {
+                                id: btState
+                                anchors.right: parent.right
+                                anchors.rightMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: btRow.modelData.connected ? "connected" : "paired"
+                                color: btRow.modelData.connected ? Theme.green : Theme.disabled
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+                            MouseArea {
+                                id: btMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                onClicked: mouse => mouse.button === Qt.RightButton
+                                    ? win.btForget(btRow.modelData)
+                                    : win.btToggleDevice(btRow.modelData)
+                            }
+                        }
+                    }
+
+                    Repeater {
+                        model: win.btPresent && win.btOn ? win.btFound : []
+
+                        Rectangle {
+                            id: btNewRow
+                            required property var modelData
+                            width: parent.width
+                            height: 32
+                            radius: 8
+                            color: btNewMa.containsMouse ? Qt.alpha(Theme.fg, 0.08) : "transparent"
+
+                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 10
+                                anchors.right: btNewTag.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "󰂱  " + btNewRow.modelData.name
+                                color: Qt.alpha(Theme.fg, 0.7)
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 12
+                                elide: Text.ElideRight
+                            }
+                            Text {
+                                id: btNewTag
+                                anchors.right: parent.right
+                                anchors.rightMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "pair"
+                                color: Theme.disabled
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+                            MouseArea {
+                                id: btNewMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onClicked: win.btPairNew(btNewRow.modelData)
+                            }
+                        }
+                    }
+
+                    Divider {}
+
+                    // status on the left, the rarer actions on the right
+                    Item {
+                        width: parent.width
+                        height: 28
+
+                        Text {
+                            anchors.left: parent.left
+                            anchors.right: footerButtons.left
+                            anchors.rightMargin: 10
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 14; height: 14; radius: 7
-                            color: vpnRow.modelData.active ? Theme.bg : Qt.alpha(Theme.fg, 0.7)
-                            Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                            text: win.status
+                            color: win.status.indexOf("fail") !== -1
+                                || win.status.indexOf("Error") !== -1 ? Theme.alert : Theme.disabled
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                            elide: Text.ElideRight
                         }
 
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: win.run(["nmcli", "c",
-                                vpnRow.modelData.active ? "down" : "up",
-                                "id", vpnRow.modelData.name],
-                                (vpnRow.modelData.active ? "disconnecting " : "connecting ")
-                                + vpnRow.modelData.name + "…")
+                        Row {
+                            id: footerButtons
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 8
+
+                            SmallButton {
+                                visible: win.wifiDev !== ""
+                                label: win.scanning ? "scanning…" : "rescan"
+                                onClicked: win.refresh(true)
+                            }
+                            SmallButton {
+                                label: "advanced"
+                                onClicked: Quickshell.execDetached(["nm-connection-editor"])
+                            }
                         }
                     }
                 }
             }
+        }
 
-            // Bluetooth — hidden entirely on machines without an adapter
-            Item {
-                visible: win.btPresent
-                width: parent.width
-                height: 26
+        // one Wi-Fi row: signal, name, a second line for connected/saved,
+        // lock for secured, inline password for new secured networks
+        Component {
+            id: netDelegate
 
-                Text {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Bluetooth"
-                    color: Theme.accent
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 12
-                    font.bold: true
-                }
+            Column {
+                id: netRow
+                required property var modelData
+                readonly property bool asking: win.pwFor === modelData.ssid
+                readonly property bool saved: win.savedWifi.indexOf(modelData.ssid) !== -1
+                width: content.width
 
                 Rectangle {
-                    visible: win.btOn
-                    anchors.right: btPill.left
-                    anchors.rightMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 74
-                    height: 24
-                    radius: 8
-                    color: Qt.alpha(Theme.fg, btScanMa.containsMouse ? 0.18 : 0.1)
-                    Text {
-                        anchors.centerIn: parent
-                        text: win.btScanning ? "scanning…" : "pair new"
-                        color: Theme.fg
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-                    MouseArea {
-                        id: btScanMa
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: win.btScan()
-                    }
-                }
-
-                Rectangle {
-                    id: btPill
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 34
-                    height: 18
-                    radius: 9
-                    color: win.btOn ? Theme.accent : Qt.alpha(Theme.fg, 0.15)
-                    Behavior on color { ColorAnimation { duration: 150 } }
-
-                    Rectangle {
-                        x: win.btOn ? parent.width - width - 2 : 2
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 14
-                        height: 14
-                        radius: 7
-                        color: win.btOn ? Theme.bg : Qt.alpha(Theme.fg, 0.7)
-                        Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: win.run(["bluetoothctl", "power",
-                            win.btOn ? "off" : "on"],
-                            win.btOn ? "bluetooth off" : "bluetooth on")
-                    }
-                }
-            }
-
-            Repeater {
-                model: win.btPresent && win.btOn ? win.btDevices : []
-
-                Rectangle {
-                    id: btRow
-                    required property var modelData
                     width: parent.width
-                    height: 30
+                    height: netRow.modelData.inUse ? 44 : 34
                     radius: 8
-                    color: btRow.modelData.connected ? Qt.alpha(Theme.accent, 0.25)
-                         : btMa.containsMouse ? Qt.alpha(Theme.fg, 0.1)
+                    color: netRow.modelData.inUse ? Qt.alpha(Theme.accent, 0.18)
+                         : netMa.containsMouse ? Qt.alpha(Theme.fg, 0.08)
                          : "transparent"
 
                     Behavior on color { ColorAnimation { duration: 120 } }
 
                     Text {
+                        id: netSig
                         anchors.left: parent.left
                         anchors.leftMargin: 10
-                        anchors.right: btState.left
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "󰂯  " + btRow.modelData.name
-                        color: btRow.modelData.connected ? Theme.accent : Theme.fg
+                        text: win.sigGlyph(netRow.modelData.signal)
+                        color: netRow.modelData.inUse ? Theme.accent : Qt.alpha(Theme.fg, 0.7)
                         font.family: Theme.fontFamily
-                        font.pixelSize: 12
-                        font.bold: btRow.modelData.connected
-                        elide: Text.ElideRight
+                        font.pixelSize: 15
                     }
+
+                    Column {
+                        anchors.left: netSig.right
+                        anchors.leftMargin: 12
+                        anchors.right: lockT.left
+                        anchors.rightMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 2
+
+                        Text {
+                            width: parent.width
+                            text: netRow.modelData.ssid
+                            color: netRow.modelData.inUse ? Theme.accent : Theme.fg
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                            font.bold: netRow.modelData.inUse
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            visible: netRow.modelData.inUse
+                            text: "connected · click to disconnect"
+                            color: Qt.alpha(Theme.fg, 0.5)
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                        }
+                    }
+
                     Text {
-                        id: btState
+                        id: lockT
                         anchors.right: parent.right
                         anchors.rightMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
-                        text: btRow.modelData.connected ? "connected" : "paired"
-                        color: btRow.modelData.connected ? Theme.green : Theme.disabled
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-                    MouseArea {
-                        id: btMa
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: Qt.LeftButton | Qt.RightButton
-                        onClicked: mouse => mouse.button === Qt.RightButton
-                            ? win.btForget(btRow.modelData)
-                            : win.btToggleDevice(btRow.modelData)
-                    }
-                }
-            }
-
-            Repeater {
-                model: win.btPresent && win.btOn ? win.btFound : []
-
-                Rectangle {
-                    id: btNewRow
-                    required property var modelData
-                    width: parent.width
-                    height: 30
-                    radius: 8
-                    color: btNewMa.containsMouse ? Qt.alpha(Theme.fg, 0.1) : "transparent"
-
-                    Behavior on color { ColorAnimation { duration: 120 } }
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 10
-                        anchors.right: btNewTag.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "󰂱  " + btNewRow.modelData.name
-                        color: Qt.alpha(Theme.fg, 0.7)
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 12
-                        elide: Text.ElideRight
-                    }
-                    Text {
-                        id: btNewTag
-                        anchors.right: parent.right
-                        anchors.rightMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "pair"
-                        color: Theme.disabled
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-                    MouseArea {
-                        id: btNewMa
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: win.btPairNew(btNewRow.modelData)
-                    }
-                }
-            }
-
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: Qt.alpha(Theme.fg, 0.1)
-            }
-
-            Text {
-                text: "Wi-Fi networks"
-                color: Theme.accent
-                font.family: Theme.fontFamily
-                font.pixelSize: 12
-                font.bold: true
-            }
-
-            Flickable {
-                width: parent.width
-                height: win.implicitHeight - y - 60
-                contentHeight: netCol.implicitHeight
-                clip: true
-
-                Column {
-                    id: netCol
-                    width: parent.width
-                    spacing: 2
-
-                    Text {
-                        visible: win.nets.length === 0
-                        text: win.scanning ? "scanning…"
-                            : win.wifiOn ? "no networks found" : "wifi is off"
+                        text: win.secured(netRow.modelData) ? "󰌾" : ""
                         color: Theme.disabled
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
-                        topPadding: 8
                     }
 
-                    Repeater {
-                        model: win.nets
+                    MouseArea {
+                        id: netMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: win.connectTo(netRow.modelData)
+                    }
+                }
 
-                        Column {
-                            id: netRow
-                            required property var modelData
-                            readonly property bool asking: win.pwFor === modelData.ssid
-                            width: netCol.width
+                // inline password entry for new secured networks
+                Item {
+                    visible: netRow.asking
+                    width: parent.width
+                    height: visible ? 38 : 0
 
-                            Rectangle {
-                                width: parent.width
-                                height: 34
-                                radius: 8
-                                color: netRow.modelData.inUse ? Qt.alpha(Theme.accent, 0.25)
-                                     : netMa.containsMouse ? Qt.alpha(Theme.fg, 0.1)
-                                     : "transparent"
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        radius: 8
+                        color: Qt.alpha(Theme.fg, 0.08)
 
-                                Behavior on color { ColorAnimation { duration: 120 } }
+                        TextInput {
+                            id: pwInput
+                            anchors.left: parent.left
+                            anchors.right: goBtn.left
+                            anchors.leftMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            echoMode: TextInput.Password
+                            color: Theme.fg
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                            focus: netRow.asking
+                            onAccepted: win.connectPw(netRow.modelData.ssid, text)
 
-                                Text {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 10
-                                    anchors.right: lockT.left
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: win.sigGlyph(netRow.modelData.signal) + "  "
-                                        + netRow.modelData.ssid
-                                        + (netRow.modelData.inUse ? "  󰄬" : "")
-                                    color: netRow.modelData.inUse ? Theme.accent : Theme.fg
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 12
-                                    font.bold: netRow.modelData.inUse
-                                    elide: Text.ElideRight
-                                }
-
-                                Text {
-                                    id: lockT
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 10
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: (win.savedWifi.indexOf(netRow.modelData.ssid) !== -1
-                                        ? "saved  " : "")
-                                        + (netRow.modelData.security !== ""
-                                           && netRow.modelData.security !== "--" ? "󰌾" : "")
-                                    color: Theme.disabled
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 11
-                                }
-
-                                MouseArea {
-                                    id: netMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    onClicked: win.connectTo(netRow.modelData)
-                                }
+                            Text {
+                                visible: pwInput.text === ""
+                                text: "password"
+                                color: Theme.disabled
+                                font: pwInput.font
                             }
+                        }
 
-                            // inline password entry for new secured networks
-                            Item {
-                                visible: netRow.asking
-                                width: parent.width
-                                height: visible ? 38 : 0
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    anchors.margins: 4
-                                    radius: 8
-                                    color: Qt.alpha(Theme.fg, 0.08)
-
-                                    TextInput {
-                                        id: pwInput
-                                        anchors.left: parent.left
-                                        anchors.right: goBtn.left
-                                        anchors.leftMargin: 10
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        echoMode: TextInput.Password
-                                        color: Theme.fg
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 12
-                                        focus: netRow.asking
-                                        onAccepted: win.connectPw(netRow.modelData.ssid, text)
-
-                                        Text {
-                                            visible: pwInput.text === ""
-                                            text: "password"
-                                            color: Theme.disabled
-                                            font: pwInput.font
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        id: goBtn
-                                        anchors.right: parent.right
-                                        anchors.rightMargin: 4
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 64
-                                        height: 24
-                                        radius: 7
-                                        color: Theme.accent
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: "join"
-                                            color: Theme.bg
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: 11
-                                            font.bold: true
-                                        }
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            onClicked: win.connectPw(netRow.modelData.ssid, pwInput.text)
-                                        }
-                                    }
-                                }
+                        Rectangle {
+                            id: goBtn
+                            anchors.right: parent.right
+                            anchors.rightMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 64
+                            height: 24
+                            radius: 7
+                            color: Theme.accent
+                            Text {
+                                anchors.centerIn: parent
+                                text: "join"
+                                color: Theme.bg
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                                font.bold: true
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: win.connectPw(netRow.modelData.ssid, pwInput.text)
                             }
                         }
                     }
                 }
-            }
-
-            // status line
-            Text {
-                width: parent.width
-                text: win.busy ? win.status : win.status
-                visible: win.status !== ""
-                color: win.status.indexOf("fail") !== -1
-                    || win.status.indexOf("Error") !== -1 ? Theme.alert : Theme.disabled
-                font.family: Theme.fontFamily
-                font.pixelSize: 11
-                elide: Text.ElideRight
             }
         }
     }
