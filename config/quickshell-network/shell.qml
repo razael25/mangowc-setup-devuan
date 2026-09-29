@@ -18,8 +18,8 @@ ShellRoot {
 
         title: "Network"
         implicitWidth: 440
-        // tall enough for the share view wherever there's Wi-Fi to share
-        implicitHeight: Math.min(Math.max(wifiDev !== "" ? 460 : 0, content.implicitHeight + 32),
+        // as tall as its content; the share view fits itself into that
+        implicitHeight: Math.min(content.implicitHeight + 32,
                                  (screen ? screen.height : 1080) * 0.8)
         color: Theme.bg
 
@@ -721,14 +721,13 @@ ShellRoot {
             }
         }
 
+        // the bar's section heading (LayoutPicker's SectionLabel)
         component SectionLabel: Text {
             topPadding: 6
-            color: Qt.alpha(Theme.fg, 0.5)
+            color: Theme.accent
             font.family: Theme.fontFamily
-            font.pixelSize: 11
+            font.pixelSize: 12
             font.bold: true
-            font.capitalization: Font.AllUppercase
-            font.letterSpacing: 1
         }
 
         component Divider: Rectangle {
@@ -737,20 +736,36 @@ ShellRoot {
             color: Qt.alpha(Theme.fg, 0.1)
         }
 
+        // the bar modules' pill: soft fill, brighter on hover, optional glyph
         component SmallButton: Rectangle {
             property string label
+            property string glyph: ""
             signal clicked()
-            width: btnText.implicitWidth + 20
+            width: btnRow.implicitWidth + 20
             height: 26
             radius: 8
-            color: Qt.alpha(Theme.fg, btnMa.containsMouse ? 0.18 : 0.08)
-            Text {
-                id: btnText
+            color: Qt.alpha(Theme.fg, btnMa.containsMouse ? 0.14 : 0.07)
+            Behavior on color { ColorAnimation { duration: 150 } }
+            Row {
+                id: btnRow
                 anchors.centerIn: parent
-                text: parent.label
-                color: Theme.fg
-                font.family: Theme.fontFamily
-                font.pixelSize: 11
+                spacing: 6
+                Text {
+                    visible: parent.parent.glyph !== ""
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: parent.parent.glyph
+                    color: Theme.accent
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 13
+                }
+                Text {
+                    id: btnText
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: parent.parent.label
+                    color: Theme.fg
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                }
             }
             MouseArea {
                 id: btnMa
@@ -804,44 +819,49 @@ ShellRoot {
                     Qt.quit()
             }
 
-            // share view: over everything else while open
+            // share view: over everything else while open. The network's
+            // name as the heading, the code sized to whatever height the
+            // window has (it's only as tall as the list), dark on white
+            // because that's what phone cameras read.
             Rectangle {
+                id: shareLayer
                 anchors.fill: parent
                 visible: win.sharing
                 z: 10
                 color: Theme.bg
+
+                readonly property int qrSize: Math.max(150, Math.min(216, height - 150))
 
                 MouseArea { anchors.fill: parent }   // nothing underneath takes clicks
 
                 Column {
                     anchors.centerIn: parent
                     width: parent.width - 48
-                    spacing: 14
+                    spacing: 12
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
-                        text: "Share " + win.shareSsid
-                        color: Theme.fg
+                        text: "󰐲  " + win.shareSsid
+                        color: Theme.accent
                         font.family: Theme.fontFamily
-                        font.pixelSize: 16
+                        font.pixelSize: 15
                         font.bold: true
                         elide: Text.ElideRight
                     }
 
-                    // QR on white: scanners want the contrast whatever the theme
                     Rectangle {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        width: 236
-                        height: 236
-                        radius: 10
+                        width: shareLayer.qrSize + 16
+                        height: width
+                        radius: 8
                         color: "white"
 
                         Image {
                             anchors.centerIn: parent
-                            width: 216
-                            height: 216
+                            width: shareLayer.qrSize
+                            height: width
                             visible: win.shareQr !== ""
                             source: win.shareQr
                             smooth: false          // crisp modules
@@ -862,10 +882,11 @@ ShellRoot {
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: win.shareError === "" ? "Scan to join this network" : ""
-                        color: Theme.fg
+                        visible: win.shareError === ""
+                        text: "point a phone camera here to join"
+                        color: Qt.alpha(Theme.fg, 0.6)
                         font.family: Theme.fontFamily
-                        font.pixelSize: 13
+                        font.pixelSize: 12
                     }
 
                     // the password on request, selectable to copy
@@ -884,11 +905,12 @@ ShellRoot {
 
                     Row {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        spacing: 10
+                        spacing: 8
 
                         SmallButton {
                             visible: win.sharePw !== ""
-                            label: win.shareShowPw ? "hide password" : "show password"
+                            glyph: win.shareShowPw ? "󰈉" : "󰈈"
+                            label: win.shareShowPw ? "hide password" : "password"
                             onClicked: win.shareShowPw = !win.shareShowPw
                         }
                         SmallButton {
@@ -916,21 +938,31 @@ ShellRoot {
                         width: parent.width
                         height: 48
 
-                        Text {
+                        // the media popup's art tile, holding the connection's glyph
+                        Rectangle {
                             id: heroIcon
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
-                            text: win.headerIcon
-                            color: win.headerColor
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 30
+                            width: 44
+                            height: 44
+                            radius: 8
+                            color: Qt.alpha(Theme.fg, 0.06)
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: win.headerIcon
+                                color: win.headerColor
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 22
+                            }
                         }
 
                         Column {
                             anchors.left: heroIcon.right
-                            anchors.leftMargin: 14
-                            anchors.right: heroToggle.left
-                            anchors.rightMargin: qrBtn.visible ? 100 : 56
+                            anchors.leftMargin: 12
+                            anchors.right: qrBtn.visible ? qrBtn.left
+                                         : heroToggle.visible ? wifiLabel.left : parent.right
+                            anchors.rightMargin: 12
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 3
 
@@ -939,7 +971,7 @@ ShellRoot {
                                 text: win.headerName
                                 color: Theme.fg
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 17
+                                font.pixelSize: 13   // the media popup's title size
                                 font.bold: true
                                 elide: Text.ElideRight
                             }
@@ -964,32 +996,15 @@ ShellRoot {
                         }
 
                         // share this Wi-Fi as a QR code
-                        Rectangle {
+                        SmallButton {
                             id: qrBtn
                             visible: win.currentNet !== null
                             anchors.right: wifiLabel.left
                             anchors.rightMargin: 12
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 32
-                            height: 32
-                            radius: 8
-                            color: Qt.alpha(Theme.fg, qrMa.containsMouse ? 0.18 : 0.08)
-                            border.width: 1
-                            border.color: Qt.alpha(Theme.fg, 0.12)
-                            Text {
-                                anchors.centerIn: parent
-                                text: "󰐲"
-                                color: Theme.fg
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 16
-                            }
-                            MouseArea {
-                                id: qrMa
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: win.openShare()
-                            }
+                            glyph: "󰐲"
+                            label: "share"
+                            onClicked: win.openShare()
                         }
 
                         Text {
