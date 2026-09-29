@@ -93,10 +93,15 @@ icon theme in as `QS_ICON_THEME` (quickshell doesn't follow it itself).
   Hover a row for ✕ to end that program (second click confirms; SIGTERM,
   then Force quit if it's still there after 3s). Only your own processes,
   never the session's: a shared list in the card plus `Wm.sessionProcs`.
-- `VolumePopup.qml` — right-click on Volume: slider plus a sink picker
-  (every PipeWire output, click to make it the default) and a
-  pavucontrol row. Reads and writes through Quickshell's Pipewire
-  service, so it follows changes made anywhere else.
+- `VolumePopup.qml` — click on Volume (right-click mutes): a header (output, level,
+  mute), Output (slider, every sink, click to make it the default),
+  Input (only with a microphone: slider, a live level meter that runs
+  only while open, the mics, mute), Apps (each app playing, its streams
+  grouped under one slider), pavucontrol. Lists filter on what PipeWire
+  announces up front (node type), never on bound-later properties — a
+  list that changes as its own nodes bind loops and crashed the bar. The
+  default source counts as the mic only if it is one (PipeWire can hand
+  back an output there).
 - Tail of `scripts/wallpaper-theme` — mango: writes `theme.conf`
   (focus/border/urgent/root colours, sourced by config.conf) and
   `reload_config`; swaybg replaces the wallpaper and the config.conf

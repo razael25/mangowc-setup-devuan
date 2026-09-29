@@ -2,8 +2,9 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.Pipewire
 
-// Default sink volume. Scroll to adjust, click to mute, right click for
-// the volume popup (slider, output picker, pavucontrol).
+// Default sink volume. Click for the volume popup (output + picker,
+// microphone + live meter, per-app volume, pavucontrol; it has its own
+// mute pill), right click to mute, scroll to adjust.
 BarModule {
     id: root
 
@@ -31,10 +32,11 @@ BarModule {
     label: flash ? (muted ? "--" : volume + "%") : ""
 
     onClicked: mouse => {
-        if (mouse.button === Qt.RightButton)
+        if (mouse.button === Qt.RightButton) {
+            if (audio) audio.muted = !audio.muted
+        } else if (mouse.button === Qt.LeftButton) {
             popup.visible = !popup.visible
-        else if (audio)
-            audio.muted = !audio.muted
+        }
     }
     onScrolled: dir => {
         if (audio) {

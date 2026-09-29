@@ -122,7 +122,7 @@ single `mmsg watch` stream — no polling, no patch — and clicks go back throu
 | Media       | play / pause             | now-playing popup       | prev / next    |
 | Weather     | 3-day forecast           | location / units        | —              |
 | CPU / RAM   | what's using it (top programs) | btop              | —              |
-| Volume      | mute                     | volume popup: slider, output picker, pavucontrol | ±2% |
+| Volume      | volume popup: output + picker, microphone + live meter, per-app volume, pavucontrol | mute | ±2% |
 | Network     | network app: your connection + ping/speed/IP, VPN, known & other Wi-Fi, Bluetooth (the login page while it says "sign in") | nm-connection-editor | —  |
 | Clock       | calendar                 | —                       | —              |
 | Screenshot  | region                   | full screen             | —              |
