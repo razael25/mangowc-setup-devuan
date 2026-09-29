@@ -201,7 +201,7 @@ Popout {
         }
         TweakSlider {
             label: "popup size"
-            from: 0.8; to: 1.8
+            from: 0.8; to: 2.0
             value: Theme.popupUserScale
             isInt: false
             suffix: "×"

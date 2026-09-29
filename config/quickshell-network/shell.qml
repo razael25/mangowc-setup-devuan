@@ -18,7 +18,7 @@ ShellRoot {
 
         title: "Network"
         // laid out at 1080p sizes (440 wide) and scaled as a whole by the
-        // bar's popup scale (Theme.popupScale): resolution × popup size
+        // bar's popup scale (Theme.popupScale): the popup size slider
         implicitWidth: Math.round(440 * Theme.popupScale)
         // as tall as its content; the share view fits itself into that
         implicitHeight: Math.min(Math.round((content.implicitHeight + 32) * Theme.popupScale),

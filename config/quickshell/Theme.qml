@@ -93,12 +93,13 @@ Singleton {
     readonly property int moduleHeight: Math.round(26 * barScale)
     readonly property int effectiveBarHeight: Math.max(barHeight, moduleHeight + edgeInset + 8)
 
-    // Popups follow autoScale × the "popup size" slider (tweaks picker,
-    // persisted to popup-scale). Popout scales each card as a whole — text,
-    // icons, rows and layout together — so popups are written at 1080p
-    // sizes and never need their own scaling. 1.0 at 1080p by default.
+    // Popups follow the "popup size" slider (tweaks picker, persisted to
+    // popup-scale) — not the screen resolution: at 1.0 they're the size
+    // they've always been, on any screen. Popout scales each card as a
+    // whole (text, icons, rows and layout together), so popups are written
+    // at one set of sizes and never need their own scaling.
     property real popupUserScale: 1.0
-    readonly property real popupScale: autoScale * popupUserScale
+    readonly property real popupScale: popupUserScale
 
     FileView {
         path: root.configDir + "/bar-height"
@@ -134,7 +135,7 @@ Singleton {
         onLoadFailed: root.popupUserScale = 1.0
         onLoaded: {
             const v = parseFloat(text())
-            root.popupUserScale = isNaN(v) ? 1.0 : Math.min(Math.max(v, 0.8), 1.8)
+            root.popupUserScale = isNaN(v) ? 1.0 : Math.min(Math.max(v, 0.8), 2.0)
         }
     }
 

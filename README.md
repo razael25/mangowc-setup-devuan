@@ -132,8 +132,8 @@ live sliders for gaps, border width, master width and master count,
 toggles for blur, shadows and animations, an unfocused-window opacity
 slider (they all change under your cursor and stick), the bar's own
 height and scale, and **popup size**: every popup, the launcher and the
-network app grow together, on top of following your screen's resolution
-(1× at 1080p, bigger on 1440p and 4K). The **command menu** holds the toggles that
+network app grow together (handy on 1440p and 4K screens, or for older
+eyes). The **command menu** holds the toggles that
 don't earn a bar module: power profile, keep-awake, night light, DND, a
 pomodoro, screen off.
 
