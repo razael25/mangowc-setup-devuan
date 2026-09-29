@@ -43,6 +43,7 @@ ShellRoot {
         property var nets: []       // {inUse, signal, security, ssid, freq}
         property var savedWifi: []  // SSIDs of saved Wi-Fi profiles
         property var savedUuid: ({}) // SSID → profile UUID (profile names often aren't the SSID)
+        property var savedNoPw: ({}) // SSID → true: the profile holds no usable password
         property bool scanning: false
         property bool busy: false
         property string status: ""
@@ -94,23 +95,51 @@ ShellRoot {
             scanProc.running = true
         }
 
+        // the network a connect is under way for: if it fails wanting a
+        // password (a saved profile without one, a changed router password),
+        // its inline password field opens — mango runs no password dialog
+        // (secret agent) of its own
+        property var trying: null
+
         function connectTo(net) {
             if (net.inUse) {
                 run(["nmcli", "d", "disconnect", wifiDev], "disconnecting…")
+            } else if (savedUuid[net.ssid] && secured(net) && savedNoPw[net.ssid]) {
+                // saved, but without a password it can't work: ask right away
+                // instead of letting NetworkManager try and time out
+                pwFor = net.ssid
+                status = "enter the password for " + net.ssid
             } else if (savedUuid[net.ssid]) {
-                run(["nmcli", "c", "up", "uuid", savedUuid[net.ssid]], "connecting to " + net.ssid + "…")
-            } else if (net.security === "" || net.security === "--") {
-                run(["nmcli", "dev", "wifi", "connect", net.ssid],
+                trying = net
+                run(["nmcli", "--wait", "20", "c", "up", "uuid", savedUuid[net.ssid]],
+                    "connecting to " + net.ssid + "…")
+            } else if (!secured(net)) {
+                run(["nmcli", "--wait", "20", "dev", "wifi", "connect", net.ssid],
                     "connecting to " + net.ssid + "…")
             } else {
                 pwFor = net.ssid
             }
         }
 
+        // a saved profile gets the password written into it (WPA3-only
+        // routers want SAE, everything else WPA-PSK), so it isn't duplicated;
+        // a new network gets a profile made by `wifi connect`. Arguments go
+        // in as $1.., never spliced into the shell string.
         function connectPw(ssid, pw) {
             pwFor = ""
-            run(["nmcli", "dev", "wifi", "connect", ssid, "password", pw],
-                "connecting to " + ssid + "…")
+            const net = nets.find(n => n.ssid === ssid)
+            const uuid = savedUuid[ssid]
+            if (uuid) {
+                const sec = net ? net.security : ""
+                const mgmt = sec.indexOf("WPA3") !== -1 && sec.indexOf("WPA2") === -1
+                             && sec.indexOf("WPA1") === -1 ? "sae" : "wpa-psk"
+                run(["sh", "-c", "nmcli c modify uuid \"$1\" wifi-sec.key-mgmt \"$2\" wifi-sec.psk \"$3\" " +
+                     "&& nmcli --wait 20 c up uuid \"$1\"", "sh", uuid, mgmt, pw],
+                    "connecting to " + ssid + "…")
+            } else {
+                run(["nmcli", "--wait", "20", "dev", "wifi", "connect", ssid, "password", pw],
+                    "connecting to " + ssid + "…")
+            }
         }
 
         property var _err: []
@@ -131,8 +160,16 @@ ShellRoot {
             }
             onExited: (code, st) => {
                 win.busy = false
-                win.status = code === 0 ? "done"
-                    : (win._err.length ? win._err[win._err.length - 1] : "failed")
+                const err = win._err.length ? win._err[win._err.length - 1] : "failed"
+                // a saved network that needs its password (again): ask here
+                if (code !== 0 && win.trying && win.secured(win.trying)
+                    && /secret|password|timeout|expired/i.test(err)) {
+                    win.pwFor = win.trying.ssid
+                    win.status = "password needed for " + win.trying.ssid
+                } else {
+                    win.status = code === 0 ? "done" : err
+                }
+                win.trying = null
                 win.refresh(false)
             }
         }
@@ -237,6 +274,7 @@ ShellRoot {
 
         property var vpns: []   // {name, active}
         property var _saved: ({})
+        property var _noPw: ({})
         property var _vpns: []
         // saved profiles: Wi-Fi ones by the SSID they join (a profile named
         // "Wi-Fi connection 1" is still Frontier5408), VPNs by name.
@@ -246,7 +284,10 @@ ShellRoot {
             command: ["sh", "-c",
                 "nmcli -t -f UUID,TYPE,ACTIVE,NAME c show | while IFS=: read -r uuid type active name; do " +
                 "  case \"$type\" in " +
-                "    *wireless*) echo \"wifi:$uuid:$(nmcli -g 802-11-wireless.ssid c show \"$uuid\")\" ;; " +
+                "    *wireless*) " +
+                "      km=$(nmcli -g 802-11-wireless-security.key-mgmt c show \"$uuid\" 2>/dev/null); " +
+                "      fl=$(nmcli -g 802-11-wireless-security.psk-flags c show \"$uuid\" 2>/dev/null); " +
+                "      echo \"wifi:$uuid:$km:${fl%% *}:$(nmcli -g 802-11-wireless.ssid c show \"$uuid\")\" ;; " +
                 "    vpn|wireguard|tun) echo \"$type:$active:$name\" ;; " +
                 "  esac; " +
                 "done"]
@@ -256,12 +297,19 @@ ShellRoot {
                     if (p.length < 3)
                         return
                     const type = p[0]
-                    const rest = p.slice(2).join(":").replace(/\\:/g, ":")
                     if (type === "wifi") {
-                        if (rest !== "")
-                            win._saved[rest] = p[1]
+                        // wifi:<uuid>:<key-mgmt>:<psk-flags>:<ssid>. No
+                        // key-mgmt = saved as an open network; psk-flags 1/2
+                        // = the password lives in a (missing) agent or nowhere
+                        const ssid = p.slice(4).join(":").replace(/\\:/g, ":")
+                        if (ssid !== "") {
+                            win._saved[ssid] = p[1]
+                            if (p[2] === "" || p[3] === "1" || p[3] === "2")
+                                win._noPw[ssid] = true
+                        }
                         return
                     }
+                    const rest = p.slice(2).join(":").replace(/\\:/g, ":")
                     const active = p[1] === "yes"
                     const name = rest
                     if (type === "vpn" || type === "wireguard")
@@ -278,9 +326,11 @@ ShellRoot {
             onRunningChanged: {
                 if (running) {
                     win._saved = {}
+                    win._noPw = {}
                     win._vpns = []
                 } else {
                     win.savedUuid = win._saved
+                    win.savedNoPw = win._noPw
                     win.savedWifi = Object.keys(win._saved)
                     win.vpns = win._vpns
                     if (!win.ready) win._loaded++
@@ -1057,6 +1107,8 @@ ShellRoot {
                 id: netRow
                 required property var modelData
                 readonly property bool asking: win.pwFor === modelData.ssid
+                property bool showPw: false
+                onAskingChanged: if (!asking) showPw = false
                 readonly property bool saved: win.savedWifi.indexOf(modelData.ssid) !== -1
                 width: content.width
 
@@ -1142,10 +1194,11 @@ ShellRoot {
                         TextInput {
                             id: pwInput
                             anchors.left: parent.left
-                            anchors.right: goBtn.left
+                            anchors.right: eyeBtn.left
                             anchors.leftMargin: 10
+                            anchors.rightMargin: 6
                             anchors.verticalCenter: parent.verticalCenter
-                            echoMode: TextInput.Password
+                            echoMode: netRow.showPw ? TextInput.Normal : TextInput.Password
                             color: Theme.fg
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
@@ -1157,6 +1210,35 @@ ShellRoot {
                                 text: "password"
                                 color: Theme.disabled
                                 font: pwInput.font
+                            }
+                        }
+
+                        // show / hide what you've typed
+                        Rectangle {
+                            id: eyeBtn
+                            anchors.right: goBtn.left
+                            anchors.rightMargin: 6
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 26
+                            height: 24
+                            radius: 7
+                            color: eyeMa.containsMouse ? Qt.alpha(Theme.fg, 0.14) : "transparent"
+                            Text {
+                                anchors.centerIn: parent
+                                text: netRow.showPw ? "󰈉" : "󰈈"
+                                color: Qt.alpha(Theme.fg, 0.7)
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 14
+                            }
+                            MouseArea {
+                                id: eyeMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    netRow.showPw = !netRow.showPw
+                                    pwInput.forceActiveFocus()
+                                }
                             }
                         }
 
