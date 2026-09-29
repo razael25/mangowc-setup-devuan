@@ -80,7 +80,7 @@ as proper `.deb`s, built in a clean trixie container by
 | `libwlroots-0.19`           | Its wlroots, side by side with Debian's 0.18 (sway keeps working) |
 | `libscenefx-0.4`            | Blur, shadows, rounded corners                                 |
 | `quickshell`                | The bar and every popup                                        |
-| `rofi`                      | Launcher (and the power menu when the bar isn't running)       |
+| `rofi`                      | Launcher and power menu when the bar isn't running             |
 | `awww`                      | Wallpaper daemon (the artist formerly known as swww) — wallpapers wipe in, they don't just appear |
 
 Everything else is stock Debian:
@@ -112,7 +112,7 @@ single `mmsg watch` stream — no polling, no patch — and clicks go back throu
 
 | Module      | Left click               | Right click             | Scroll         |
 |-------------|--------------------------|-------------------------|----------------|
-| Launcher    | rofi                     | wallpaper picker        | —              |
+| Launcher    | app launcher             | wallpaper picker        | —              |
 | Tags        | view                     | —                       | cycle tags     |
 | Layout      | layout + tweaks picker   | (empty bar: same)       | cycle layouts  |
 | Media       | play / pause             | now-playing popup       | prev / next    |
@@ -155,7 +155,7 @@ Super is the mod key. Same muscle memory as the other setups.
 |------------------------|----------------------------------------|
 | `Super + Return`       | Terminal (kitty)                       |
 | `Super + \``           | Drop-down terminal (scratchpad)        |
-| `Super + Space`        | App launcher (rofi)                    |
+| `Super + Space`        | App launcher                           |
 | `Super + /`            | Keybind cheatsheet                     |
 | `Super + Q`            | Close window                           |
 | `Super + Shift + Q`    | Quit mango                             |
@@ -227,6 +227,7 @@ still shows you which window is live. The opacity slider needs mangowc
 │   ├── changevolume      # volume + notifications
 │   ├── keybinds          # config.conf's binds for the keybinds popup
 │   ├── procs             # /proc snapshot for the metrics card
+│   ├── launcher          # opens the app grid (rofi if the bar is down)
 │   ├── power / network
 ├── quickshell/           # the bar (see its README)
 ├── quickshell-network/   # the network app (its own qs instance)

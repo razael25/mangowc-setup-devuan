@@ -220,11 +220,6 @@ Singleton {
     function sendToTag(i) { dispatch("tag," + (i + 1)) }
     function cycleTag(dir) { dispatch(dir > 0 ? "viewtoright_have_client" : "viewtoleft_have_client") }
 
-    function openLauncher() {
-        Quickshell.execDetached(["rofi", "-show", "drun", "-modi", "drun",
-            "-line-padding", "4", "-hide-scrollbar", "-show-icons",
-            "-theme", Theme.configDir + "/rofi/config.rasi"])
-    }
     function logout() { dispatch("quit") }
 
     // processes this session can't lose: the metrics card won't offer to

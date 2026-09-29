@@ -5,8 +5,9 @@ wallpaper-driven theming, and the network app — with a mango backend.
 Nothing here touches X11: mango is a Wayland compositor and the bar is a
 wlr-layer-shell panel.
 
-Launch: `qs -p ~/.config/mango/quickshell -d -n` (config.conf's exec-once
-does this), or `scripts/bar restart|log` which handles the `-p` flag.
+Launch: `scripts/bar start` (config.conf's exec-once), or
+`scripts/bar restart|log`, which handle the `-p` flag and pass the GTK
+icon theme in as `QS_ICON_THEME` (quickshell doesn't follow it itself).
 
 ## WM-specific files (everything else is shared verbatim with the other ports)
 
@@ -59,6 +60,12 @@ does this), or `scripts/bar restart|log` which handles the `-p` flag.
   three on a second press. Logout is `Wm.logout()` (mango: `quit`).
   `scripts/power` opens it over IPC and falls back to the old rofi list
   when the bar isn't running. Mango only so far.
+- `LauncherPopup.qml` — app grid (Super+space, left-click the swirl):
+  search over name / generic name / keywords / program, All · Apps ·
+  Settings chips, alphabetical until you type; launch history
+  (`launcher-history`) only breaks ties between matches. Terminal apps
+  run in kitty. `scripts/launcher` opens it and falls back to rofi when
+  the bar isn't running.
 - `MetricsPopup.qml` — click CPU/RAM/disk: CPU and RAM meters, then the
   busiest programs. `scripts/procs` prints a /proc snapshot (plain awk,
   nothing WM-specific); the card diffs two of them for current CPU, as a
