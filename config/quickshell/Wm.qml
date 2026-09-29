@@ -226,6 +226,11 @@ Singleton {
             "-theme", Theme.configDir + "/rofi/config.rasi"])
     }
     function logout() { dispatch("quit") }
+
+    // processes this session can't lose: the metrics card won't offer to
+    // end them (it adds the ones every setup shares). mmsg is the bar's own
+    // state stream, wl-paste the clipboard history watcher.
+    readonly property var sessionProcs: /^(mango|Xwayland|mmsg|swayidle|awww-daemon|wl-paste)$/
     function openPowerMenu() {
         Quickshell.execDetached([Theme.configDir + "/scripts/power"])
     }

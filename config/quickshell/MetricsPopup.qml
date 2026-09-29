@@ -9,12 +9,18 @@ import Quickshell.Io
 // so the rows add up to the bar's CPU number. Processes group by program
 // (helium ×12); click a column to sort. Sampling runs only while the card
 // is open. btop, at the bottom, has the full picture.
+//
+// Ending a program: hover a row for ✕, click it (the row turns red and the
+// list holds still), click the row again. That asks the listed processes
+// to quit (SIGTERM, so apps can save); if any are still there 3 seconds
+// later the row offers Force quit (SIGKILL). Only your own processes, and
+// never the desktop's own: the shared list below plus Wm.sessionProcs.
 Popout {
     id: root
 
-    property var groups: []        // every program: {name, count, cpu, rss}
+    property var groups: []        // every program: {name, count, cpu, rss, pids, killable}
     property string sortBy: "cpu"
-    readonly property var rows: sorted(groups, sortBy).slice(0, maxRows)
+    readonly property var rows: frozen ?? sorted(groups, sortBy).slice(0, maxRows)
     readonly property int maxRows: 8
     readonly property int rowHeight: 24
 
@@ -22,6 +28,14 @@ Popout {
     property real memAvail: 0
     property string load: ""
     property var prev: null        // last snapshot: {total, ticks: {pid: ticks}}
+
+    // ending a program
+    property string armed: ""      // name of the row waiting for its second click
+    property var frozen: null      // the list as it was when armed, so rows don't move
+    property var ending: ({})      // name → {pids, at, stuck}
+
+    // processes every setup's session needs; Wm.sessionProcs adds the WM's own
+    readonly property var sharedSessionProcs: /^(systemd|\(sd-pam\)|dbus-.*|pipewire.*|wireplumber|xdg-.*|gvfs.*|at-spi.*|dconf-service|gnome-keyring-daemon|ssh-agent|gpg-agent|lxpolkit|polkit-.*|dunst|qs|quickshell)$/
 
     cardWidth: 360
     cardHeight: col.implicitHeight + 2 * cardPadding
@@ -33,6 +47,7 @@ Popout {
     }
 
     onVisibleChanged: {
+        disarm()
         if (visible) {
             prev = null
             groups = []
@@ -62,8 +77,12 @@ Popout {
         }
     }
 
+    function isSession(name) {
+        return sharedSessionProcs.test(name) || Wm.sessionProcs.test(name)
+    }
+
     function ingest(t) {
-        let total = 0
+        let total = 0, me = ""
         const ticks = {}, procs = []
         for (const l of t.split("\n")) {
             const f = l.split("\t")
@@ -74,9 +93,11 @@ Popout {
                 memAvail = Number(f[2])
             } else if (f[0] === "load")
                 load = f[1]
-            else if (f.length === 4) {
+            else if (f[0] === "me")
+                me = f[1]
+            else if (f.length === 5) {
                 ticks[f[0]] = Number(f[1])
-                procs.push({ pid: f[0], rss: Number(f[2]), name: f[3] })
+                procs.push({ pid: f[0], rss: Number(f[2]), uid: f[3], name: f[4] })
             }
         }
         if (prev && total > prev.total) {
@@ -85,9 +106,15 @@ Popout {
             for (const p of procs) {
                 let g = byName[p.name]
                 if (!g)
-                    g = byName[p.name] = { name: p.name, count: 0, cpu: 0, rss: 0 }
+                    g = byName[p.name] = { name: p.name, count: 0, cpu: 0, rss: 0, pids: [],
+                                           killable: !isSession(p.name) }
                 g.count++
                 g.rss += p.rss
+                g.pids.push(p.pid)
+                // anyone else's process in the group (root, a service
+                // user) and the group can't be ended from here
+                if (p.uid !== me)
+                    g.killable = false
                 // new since the last snapshot: no baseline yet, counts 0
                 if (p.pid in prev.ticks)
                     g.cpu += 100 * Math.max(0, ticks[p.pid] - prev.ticks[p.pid]) / dt
@@ -95,6 +122,17 @@ Popout {
             groups = Object.values(byName)
         }
         prev = { total: total, ticks: ticks }
+
+        // programs being ended: drop the ones that are gone, and flag the
+        // ones still running 3s after SIGTERM for a Force quit
+        const next = {}
+        for (const name in ending) {
+            const e = ending[name]
+            const alive = e.pids.filter(p => p in ticks)
+            if (alive.length)
+                next[name] = { pids: alive, at: e.at, stuck: Date.now() - e.at >= 3000 }
+        }
+        ending = next
     }
 
     function sorted(list, key) {
@@ -103,6 +141,38 @@ Popout {
 
     function mem(kb) {
         return kb >= 1048576 ? (kb / 1048576).toFixed(1) + "G" : Math.round(kb / 1024) + "M"
+    }
+
+    function arm(g) {
+        frozen = rows
+        armed = g.name
+        disarmTimer.restart()
+    }
+
+    function disarm() {
+        armed = ""
+        frozen = null
+        disarmTimer.stop()
+    }
+
+    function end(g) {
+        disarm()
+        Quickshell.execDetached(["kill", "-s", "TERM"].concat(g.pids))
+        const next = Object.assign({}, ending)
+        next[g.name] = { pids: g.pids, at: Date.now(), stuck: false }
+        ending = next
+    }
+
+    function forceQuit(name) {
+        const e = ending[name]
+        if (e)
+            Quickshell.execDetached(["kill", "-s", "KILL"].concat(e.pids))
+    }
+
+    Timer {
+        id: disarmTimer
+        interval: 4000
+        onTriggered: root.disarm()
     }
 
     function openBtop() {
@@ -188,7 +258,10 @@ Popout {
             anchors.fill: parent
             anchors.margins: -4
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.sortBy = parent.key
+            onClicked: {
+                root.disarm()
+                root.sortBy = parent.key
+            }
         }
     }
 
@@ -239,7 +312,7 @@ Popout {
                 text: "MEM" + (root.sortBy === "rss" ? " ▾" : "")
                 width: 64
                 anchors.right: parent.right
-                anchors.rightMargin: 8
+                anchors.rightMargin: 30
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
@@ -267,18 +340,40 @@ Popout {
                     Item {
                         id: row
                         required property var modelData
+                        readonly property bool armed: root.armed === modelData.name
+                        readonly property var endingState: root.ending[modelData.name] ?? null
                         width: parent.width
                         height: root.rowHeight
+
+                        // hover (and the second click once armed); declared
+                        // first so the ✕ and Force quit buttons sit above it
+                        MouseArea {
+                            id: rowMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: row.armed ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            onClicked: if (row.armed) root.end(row.modelData)
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.topMargin: 2
+                            anchors.bottomMargin: 2
+                            radius: 5
+                            visible: row.armed
+                            color: Theme.red
+                        }
 
                         // share of the top row's value in the sorted column
                         Rectangle {
                             readonly property real peak: root.rows[0]?.[root.sortBy] ?? 0
+                            readonly property real v: row.modelData[root.sortBy]
+                            visible: !row.armed
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             height: parent.height - 4
                             radius: 5
-                            readonly property real v: row.modelData[root.sortBy]
-                            width: peak > 0 && v > 0 ? Math.max(2, v / peak * parent.width) : 0
+                            width: peak > 0 && v > 0 ? Math.max(2, v / peak * (parent.width - 30)) : 0
                             color: Qt.alpha(root.sortBy === "cpu" ? Theme.red : Theme.blue, 0.12)
                             Behavior on width { NumberAnimation { duration: 300 } }
                         }
@@ -292,10 +387,12 @@ Popout {
                             width: Math.min(implicitWidth,
                                             cpuText.x - x - 8 - (countText.visible ? countText.implicitWidth + 6 : 0))
                             elide: Text.ElideRight
-                            text: row.modelData.name
-                            color: Theme.fg
+                            text: row.armed ? "End " + row.modelData.name + "?" : row.modelData.name
+                            color: row.armed ? Theme.bg
+                                 : row.endingState ? Qt.alpha(Theme.fg, 0.45) : Theme.fg
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
+                            font.bold: row.armed
                         }
                         Text {
                             id: countText
@@ -304,16 +401,30 @@ Popout {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: row.modelData.count > 1
                             text: "×" + row.modelData.count
-                            color: Qt.alpha(Theme.fg, 0.4)
+                            color: row.armed ? Theme.bg : Qt.alpha(Theme.fg, 0.4)
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                         }
+
+                        // armed: what the second click does, over the number columns
+                        Text {
+                            anchors.right: parent.right
+                            anchors.rightMargin: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: row.armed
+                            text: "click again to quit it"
+                            color: Theme.bg
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                        }
+
                         Text {
                             id: cpuText
                             width: 56
                             anchors.right: memText.left
                             anchors.verticalCenter: parent.verticalCenter
                             horizontalAlignment: Text.AlignRight
+                            visible: !row.armed && !row.endingState
                             text: row.modelData.cpu.toFixed(1)
                             color: row.modelData.cpu >= 10 ? Theme.red : Qt.alpha(Theme.fg, 0.85)
                             font.family: Theme.fontFamily
@@ -323,13 +434,84 @@ Popout {
                             id: memText
                             width: 64
                             anchors.right: parent.right
-                            anchors.rightMargin: 8
+                            anchors.rightMargin: 30
                             anchors.verticalCenter: parent.verticalCenter
                             horizontalAlignment: Text.AlignRight
+                            visible: !row.armed && !row.endingState
                             text: root.mem(row.modelData.rss)
                             color: Qt.alpha(Theme.fg, 0.85)
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
+                        }
+
+                        // SIGTERM sent: waiting, then Force quit if it's still around
+                        Text {
+                            anchors.right: parent.right
+                            anchors.rightMargin: 30
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: !!row.endingState && !row.endingState.stuck
+                            text: "quitting…"
+                            color: Qt.alpha(Theme.fg, 0.45)
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                            font.italic: true
+                        }
+                        Rectangle {
+                            anchors.right: parent.right
+                            anchors.rightMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: !!row.endingState && row.endingState.stuck
+                            width: forceText.implicitWidth + 16
+                            height: parent.height - 4
+                            radius: 5
+                            color: forceMa.containsMouse ? Theme.red : Qt.alpha(Theme.red, 0.2)
+
+                            Text {
+                                id: forceText
+                                anchors.centerIn: parent
+                                text: "Force quit"
+                                color: forceMa.containsMouse ? Theme.bg : Theme.red
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                                font.bold: true
+                            }
+
+                            MouseArea {
+                                id: forceMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.forceQuit(row.modelData.name)
+                            }
+                        }
+
+                        // ✕ on hover, only for programs this card may end
+                        Rectangle {
+                            anchors.right: parent.right
+                            anchors.rightMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: row.modelData.killable && !row.armed && !row.endingState
+                                     && (rowMa.containsMouse || xMa.containsMouse)
+                            width: 20
+                            height: 20
+                            radius: 5
+                            color: xMa.containsMouse ? Qt.alpha(Theme.red, 0.25) : "transparent"
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "✕"
+                                color: xMa.containsMouse ? Theme.red : Qt.alpha(Theme.fg, 0.5)
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+
+                            MouseArea {
+                                id: xMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.arm(row.modelData)
+                            }
                         }
                     }
                 }

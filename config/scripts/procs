@@ -6,14 +6,15 @@
 #   cpu   <total jiffies, all cores>
 #   mem   <MemTotal kB>  <MemAvailable kB>
 #   load  <1-minute load average>
-#   <pid> <utime+stime jiffies>  <rss kB>  <name>
+#   me    <our uid>
+#   <pid> <utime+stime jiffies>  <rss kB>  <uid>  <name>
 # name is the program from the command line, so browser and Electron
 # helpers group under their app instead of thread names like MainThread;
 # kernel threads (no command line) use the kernel's name, minus any /suffix.
 # Files are opened with getline: a process that exits mid-read is skipped,
 # where naming it on awk's command line would be fatal.
 cd /proc || exit 1
-exec awk -v page_kb="$(( $(getconf PAGESIZE) / 1024 ))" '
+exec awk -v page_kb="$(( $(getconf PAGESIZE) / 1024 ))" -v me="$(id -u)" '
 BEGIN {
     RS = "\n"
     while ((getline line < "stat") > 0)
@@ -38,6 +39,7 @@ BEGIN {
         printf "load\t%s\n", f[1]
     }
     close("loadavg")
+    printf "me\t%s\n", me
 
     for (a = 1; a < ARGC; a++) {
         pid = ARGV[a]
@@ -55,6 +57,17 @@ BEGIN {
         split(substr(line, RSTART + 2), f, " ")
         ticks = f[12] + f[13]
         rss = f[22] * page_kb
+
+        # owner (real uid): the card only offers to end our own processes
+        uid = ""
+        while ((getline line < (pid "/status")) > 0)
+            if (line ~ /^Uid:/) {
+                split(line, f, " ")
+                uid = f[2]
+                break
+            }
+        close(pid "/status")
+        if (uid == "") continue
 
         # argv[0]: first NUL-separated field of the command line
         RS = "\0"
@@ -74,7 +87,7 @@ BEGIN {
             sub(/\/.*/, "", name)
         }
 
-        printf "%s\t%d\t%d\t%s\n", pid, ticks, rss, name
+        printf "%s\t%d\t%d\t%s\t%s\n", pid, ticks, rss, uid, name
     }
     exit
 }' [0-9]*

@@ -64,6 +64,9 @@ does this), or `scripts/bar restart|log` which handles the `-p` flag.
   nothing WM-specific); the card diffs two of them for current CPU, as a
   share of the whole machine, grouped by program. Samples only while
   open. Right-click the module, or the card's button, opens btop.
+  Hover a row for ✕ to end that program (second click confirms; SIGTERM,
+  then Force quit if it's still there after 3s). Only your own processes,
+  never the session's: a shared list in the card plus `Wm.sessionProcs`.
 - `VolumePopup.qml` — right-click on Volume: slider plus a sink picker
   (every PipeWire output, click to make it the default) and a
   pavucontrol row. Reads and writes through Quickshell's Pipewire
