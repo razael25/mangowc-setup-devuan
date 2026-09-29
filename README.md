@@ -80,7 +80,7 @@ as proper `.deb`s, built in a clean trixie container by
 | `libwlroots-0.19`           | Its wlroots, side by side with Debian's 0.18 (sway keeps working) |
 | `libscenefx-0.4`            | Blur, shadows, rounded corners                                 |
 | `quickshell`                | The bar and every popup                                        |
-| `rofi`                      | Launcher and power menu                                        |
+| `rofi`                      | Launcher (and the power menu when the bar isn't running)       |
 | `awww`                      | Wallpaper daemon (the artist formerly known as swww) — wallpapers wipe in, they don't just appear |
 
 Everything else is stock Debian:

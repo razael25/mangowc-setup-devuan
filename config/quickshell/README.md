@@ -55,6 +55,10 @@ does this), or `scripts/bar restart|log` which handles the `-p` flag.
   WM-agnostic; `scripts/keybinds` turns config.conf's binds into its rows
   (section, keys, label, line) and opens geany at a bind's line. Opened
   from the command menu or `ipc call keybinds toggle`. Mango only so far.
+- `PowerPopup.qml` — screen off / log out / reboot / shut down, the last
+  three on a second press. Logout is `Wm.logout()` (mango: `quit`).
+  `scripts/power` opens it over IPC and falls back to the old rofi list
+  when the bar isn't running. Mango only so far.
 - `VolumePopup.qml` — right-click on Volume: slider plus a sink picker
   (every PipeWire output, click to make it the default) and a
   pavucontrol row. Reads and writes through Quickshell's Pipewire

@@ -215,6 +215,12 @@ BarModule {
         anchorItem: root
     }
 
+    // Super+x (scripts/power) and the Power menu row below
+    PowerPopup {
+        id: power
+        anchorItem: root
+    }
+
     Popout {
         id: menu
         anchorItem: root
@@ -317,7 +323,7 @@ BarModule {
                     { icon: "󰌢", label: "Screen off",
                       run: () => Quickshell.execDetached([Theme.configDir + "/scripts/screen-off"]) },
                     { icon: "󰐥", label: "Power menu",
-                      run: () => Quickshell.execDetached([Theme.configDir + "/scripts/power"]) }
+                      run: () => power.visible = true }
                 ]
                 CommandRow {}
             }

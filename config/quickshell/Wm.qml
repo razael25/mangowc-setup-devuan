@@ -225,6 +225,7 @@ Singleton {
             "-line-padding", "4", "-hide-scrollbar", "-show-icons",
             "-theme", Theme.configDir + "/rofi/config.rasi"])
     }
+    function logout() { dispatch("quit") }
     function openPowerMenu() {
         Quickshell.execDetached([Theme.configDir + "/scripts/power"])
     }
