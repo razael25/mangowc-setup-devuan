@@ -84,14 +84,21 @@ Singleton {
     // matches border_radius in config.conf
     readonly property int barRadius: 8
 
-    // In-bar elements follow autoScale × the scale slider; popups stay
-    // fixed. barHeight is a floor: the window grows when scaled modules
-    // (26px at 1.0, + inset above + 8px padding) outgrow it.
+    // In-bar elements follow autoScale × the scale slider. barHeight is a
+    // floor: the window grows when scaled modules (26px at 1.0, + inset
+    // above + 8px padding) outgrow it.
     readonly property real barScale: autoScale * barUserScale
     readonly property int fontSize: Math.round(13 * barScale)
     readonly property int iconSize: Math.round(15 * barScale)
     readonly property int moduleHeight: Math.round(26 * barScale)
     readonly property int effectiveBarHeight: Math.max(barHeight, moduleHeight + edgeInset + 8)
+
+    // Popups follow autoScale × the "popup size" slider (tweaks picker,
+    // persisted to popup-scale). Popout scales each card as a whole — text,
+    // icons, rows and layout together — so popups are written at 1080p
+    // sizes and never need their own scaling. 1.0 at 1080p by default.
+    property real popupUserScale: 1.0
+    readonly property real popupScale: autoScale * popupUserScale
 
     FileView {
         path: root.configDir + "/bar-height"
@@ -116,6 +123,18 @@ Singleton {
             const v = parseFloat(text())
             if (!isNaN(v))
                 root.barUserScale = Math.min(Math.max(v, 0.7), 2.0)
+        }
+    }
+
+    // not part of barStateReady: popups aren't open at start
+    FileView {
+        path: root.configDir + "/popup-scale"
+        watchChanges: true
+        onFileChanged: reload()
+        onLoadFailed: root.popupUserScale = 1.0
+        onLoaded: {
+            const v = parseFloat(text())
+            root.popupUserScale = isNaN(v) ? 1.0 : Math.min(Math.max(v, 0.8), 1.8)
         }
     }
 

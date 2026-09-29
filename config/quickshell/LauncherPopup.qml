@@ -32,7 +32,6 @@ Popout {
     readonly property int columns: 6
     readonly property int cellW: 112
     readonly property int cellH: 100
-    readonly property real screenH: screen ? screen.height : 1080
     readonly property string historyFile: Theme.configDir + "/launcher-history"
 
     // quickshell fills this in the background after start; the binding
@@ -94,7 +93,7 @@ Popout {
     // make the card jump
     cardHeight: Math.min(header.height + 12 + Math.ceil(Math.max(apps.length, 1) / columns) * cellH
                          + 12 + footer.height + 2 * cardPadding,
-                         screenH * 0.85)
+                         fitHeight * 0.85)
 
     // scriptable: qs -p ~/.config/mango/quickshell ipc call launcher toggle
     IpcHandler {
@@ -390,14 +389,23 @@ Popout {
                 border.color: Qt.alpha(Theme.accent, 0.5)
             }
 
-            IconImage {
+            // the card is scaled as a whole; the icon is drawn at its
+            // on-screen size and scaled back down, so it stays sharp
+            Item {
                 id: icon
                 anchors.horizontalCenter: parent.horizontalCenter
                 y: 12
-                implicitSize: 44
-                visible: !cell.modelData.isAction
-                source: cell.modelData.isAction ? ""
-                      : Quickshell.iconPath(cell.modelData.icon, "application-x-executable")
+                width: 44
+                height: 44
+
+                IconImage {
+                    anchors.centerIn: parent
+                    implicitSize: 44 * root.s
+                    scale: 1 / root.s
+                    visible: !cell.modelData.isAction
+                    source: cell.modelData.isAction ? ""
+                          : Quickshell.iconPath(cell.modelData.icon, "application-x-executable")
+                }
             }
 
             // actions: a tinted tile with the bar's glyph, not an app icon

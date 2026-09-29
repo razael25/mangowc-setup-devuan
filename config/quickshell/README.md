@@ -40,6 +40,11 @@ icon theme in as `QS_ICON_THEME` (quickshell doesn't follow it itself).
   only applies it to windows opened after the change.
 - `Popout.qml` — the card goes slightly translucent while blur is on
   (mango's `blur_layer` frosts what's behind it), solid when it's off.
+  Centered popups wear mango's window border instead. Every card is
+  scaled as a whole by `Theme.popupScale` (resolution × the picker's
+  popup size, `popup-scale`), so popups are written at 1080p sizes;
+  `fitWidth`/`fitHeight` give screen-sized popups the room in those units.
+  The network app reads the same setting in its own Theme copy.
 - `TogglePill.qml` — the quick-settings pill, shared by the command
   menu and the picker's Effects row.
 - `Sys.qml` — caps lock read from `/sys/class/leds/*capslock`, popups

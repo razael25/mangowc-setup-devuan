@@ -17,9 +17,11 @@ ShellRoot {
         id: win
 
         title: "Network"
-        implicitWidth: 440
+        // laid out at 1080p sizes (440 wide) and scaled as a whole by the
+        // bar's popup scale (Theme.popupScale): resolution × popup size
+        implicitWidth: Math.round(440 * Theme.popupScale)
         // as tall as its content; the share view fits itself into that
-        implicitHeight: Math.min(content.implicitHeight + 32,
+        implicitHeight: Math.min(Math.round((content.implicitHeight + 32) * Theme.popupScale),
                                  (screen ? screen.height : 1080) * 0.8)
         color: Theme.bg
 
@@ -803,7 +805,10 @@ ShellRoot {
         // --- UI ---
 
         Item {
-            anchors.fill: parent
+            width: 440
+            height: win.height / Theme.popupScale
+            scale: Theme.popupScale
+            transformOrigin: Item.TopLeft
 
             // Escape: cancel an open password prompt first, quit otherwise.
             // Keys on the content root, not a Shortcut (those never fire in

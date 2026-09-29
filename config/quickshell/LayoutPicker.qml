@@ -199,5 +199,15 @@ Popout {
             applyFn: v => Theme.barUserScale = v
             persistFn: v => root.persistFile("bar-scale", v)
         }
+        TweakSlider {
+            label: "popup size"
+            from: 0.8; to: 1.8
+            value: Theme.popupUserScale
+            isInt: false
+            suffix: "×"
+            live: false
+            applyFn: v => Theme.popupUserScale = v
+            persistFn: v => root.persistFile("popup-scale", v)
+        }
     }
 }

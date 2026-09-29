@@ -16,8 +16,6 @@ Popout {
     // the unfiltered layout's height, so the card doesn't shrink as you type
     property real fullHeight: 0
 
-    readonly property real screenW: screen ? screen.width : 1920
-    readonly property real screenH: screen ? screen.height : 1080
     readonly property int colSpacing: 24
     readonly property real innerWidth: cardWidth - 2 * cardPadding
     readonly property int columnCount:
@@ -28,9 +26,9 @@ Popout {
     readonly property var columns: layout(rows, query, columnCount)
 
     centered: true
-    cardWidth: Math.min(1560, screenW - 64)
+    cardWidth: Math.min(1560, fitWidth - 64)
     cardHeight: Math.min(searchBox.height + 14 + fullHeight + 2 * cardPadding,
-                         screenH * 0.8)
+                         fitHeight * 0.8)
 
     // scriptable: qs -p ~/.config/mango/quickshell ipc call keybinds toggle
     IpcHandler {

@@ -26,6 +26,33 @@ Singleton {
 
     readonly property string fontFamily: "JetBrainsMono Nerd Font"
 
+    // the bar's popup scale (its Theme.popupScale): screen resolution
+    // (1.0 at 1080p, same formula as the bar) × the tweaks picker's popup
+    // size, read from the same popup-scale file
+    readonly property real autoScale: {
+        const screens = Quickshell.screens
+        let side = 0
+        for (let i = 0; i < screens.length; i++) {
+            const edge = Math.min(screens[i].width, screens[i].height)
+            if (side === 0 || edge < side)
+                side = edge
+        }
+        return Math.min(Math.max((side || 1080) / 1080, 0.75), 2.5)
+    }
+    property real popupUserScale: 1.0
+    readonly property real popupScale: autoScale * popupUserScale
+
+    FileView {
+        path: root.configDir + "/popup-scale"
+        watchChanges: true
+        onFileChanged: reload()
+        onLoadFailed: root.popupUserScale = 1.0
+        onLoaded: {
+            const v = parseFloat(text())
+            root.popupUserScale = isNaN(v) ? 1.0 : Math.min(Math.max(v, 0.8), 1.8)
+        }
+    }
+
     FileView {
         path: root.configDir + "/polybar/colors.ini"
         watchChanges: true

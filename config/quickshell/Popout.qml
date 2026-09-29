@@ -24,6 +24,13 @@ PanelWindow {
 
     default property alias content: inner.data
 
+    // the whole card scales (Theme.popupScale), so popups lay themselves
+    // out at 1080p sizes; these are the output's size in those units, for
+    // popups that size themselves to the screen (keybinds, launcher)
+    readonly property real s: Theme.popupScale
+    readonly property real fitWidth: (screen ? screen.width : 1920) / s
+    readonly property real fitHeight: (screen ? screen.height : 1080) / s
+
     visible: false
     color: "transparent"
 
@@ -59,11 +66,17 @@ PanelWindow {
     Rectangle {
         id: card
 
-        x: root.alignRight ? root.width - width - 8
-         : root.centered ? Math.round((root.width - width) / 2)
-         : Math.min(Math.max(root.ax + (root.anchorItem?.width ?? 0) / 2 - width / 2, 8),
-                    root.width - width - 8)
-        y: root.centered ? Math.round((root.height - height) / 2)
+        // placed by its on-screen (scaled) size
+        readonly property real vw: width * root.s
+        readonly property real vh: height * root.s
+        scale: root.s
+        transformOrigin: Item.TopLeft
+
+        x: root.alignRight ? root.width - vw - 8
+         : root.centered ? Math.round((root.width - vw) / 2)
+         : Math.min(Math.max(root.ax + (root.anchorItem?.width ?? 0) / 2 - vw / 2, 8),
+                    root.width - vw - 8)
+        y: root.centered ? Math.round((root.height - vh) / 2)
          : root.ay + (root.anchorItem?.height ?? 0) + 12
 
         transform: Translate { id: slide; y: 0 }

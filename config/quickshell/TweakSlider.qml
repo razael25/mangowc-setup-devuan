@@ -12,6 +12,9 @@ Item {
     property real value: 0
     property bool isInt: true
     property string suffix: ""
+    // false: apply only on release (the popup size slider — the picker
+    // it lives in would otherwise resize under the cursor mid-drag)
+    property bool live: true
 
     required property var applyFn
     required property var persistFn
@@ -91,9 +94,9 @@ Item {
             const f = Math.min(Math.max(mx / width, 0), 1)
             return ts.from + f * (ts.to - ts.from)
         }
-        onPressed: m => { ts.drag = at(m.x); applyThrottle.restart() }
+        onPressed: m => { ts.drag = at(m.x); if (ts.live) applyThrottle.restart() }
         onPositionChanged: m => {
-            if (pressed) { ts.drag = at(m.x); applyThrottle.restart() }
+            if (pressed) { ts.drag = at(m.x); if (ts.live) applyThrottle.restart() }
         }
         onReleased: {
             const v = ts.fmt(ts.drag)
