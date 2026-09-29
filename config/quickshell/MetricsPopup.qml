@@ -30,7 +30,7 @@ Popout {
     property var prev: null        // last snapshot: {total, ticks: {pid: ticks}}
 
     // from scripts/sysinfo, same tick: local disks, disk activity, temps
-    property var disks: []         // {mount, size, used} in kB
+    property var disks: []         // {mount, size, used (kB), fs, encrypted}
     property var ioPrev: null      // {r, w, t}: sector counters + time
     property real ioRead: -1       // bytes/s
     property real ioWrite: -1
@@ -98,8 +98,9 @@ Popout {
         let io = null
         for (const l of t.split("\n")) {
             const f = l.split("\t")
-            if (f[0] === "disk" && f.length === 4)
-                disks.push({ mount: f[1], size: Number(f[2]), used: Number(f[3]) })
+            if (f[0] === "disk" && f.length >= 4)
+                disks.push({ mount: f[1], size: Number(f[2]), used: Number(f[3]),
+                             fs: f[4] ?? "", encrypted: f[5] === "1" })
             else if (f[0] === "io")
                 io = { r: Number(f[1]), w: Number(f[2]), t: Date.now() }
             else if (f[0] === "temp" && f.length === 4)
@@ -445,7 +446,10 @@ Popout {
 
             Meter {
                 required property var modelData
-                tag: modelData.mount === "/" ? "/" : modelData.mount.split("/").pop()
+                // a lock when the disk sits inside LUKS (Butterbian's
+                // "Encrypt system"): encrypted at rest, at a glance
+                tag: (modelData.mount === "/" ? "/" : modelData.mount.split("/").pop())
+                     + (modelData.encrypted ? " 󰌾" : "")
                 tint: Theme.yellow
                 value: modelData.size > 0 ? 100 * modelData.used / modelData.size : 0
                 detail: root.mem(modelData.used) + " / " + root.mem(modelData.size)

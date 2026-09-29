@@ -116,6 +116,7 @@ PACKAGES_WAYLAND=(
     grim slurp swappy wl-clipboard cliphist
     wlr-randr swayidle wlopm
     xdg-desktop-portal-wlr xdg-desktop-portal-gtk
+    x11-xserver-utils
 )
 
 PACKAGES_UI=(

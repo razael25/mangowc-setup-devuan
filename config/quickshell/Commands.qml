@@ -12,8 +12,8 @@ import Quickshell.Io
 //     right-click = the fuller tool (mixer, notification history, network
 //     app). Toggles stay open so the change is visible.
 //   brightness slider on laptops
-//   System — notifications, check updates, keybindings, restart bar,
-//     power menu; these close the menu.
+//   System — notifications, snapshots (Timeshift, when installed), check
+//     updates, keybindings, restart bar, power menu; these close the menu.
 // A running focus timer puts its countdown on this module itself —
 // glanceable without a dedicated one.
 BarModule {
@@ -45,6 +45,7 @@ BarModule {
     property int brightness: 50
     property bool btPresent: false
     property bool btOn: false
+    property bool hasTimeshift: false
 
     Process {
         id: stateProc
@@ -56,7 +57,8 @@ BarModule {
             "\"$(brightnessctl -m -c backlight 2>/dev/null | head -n1)\" " +
             "\"$(pgrep -f '[w]hy=quickshell-caffeine' >/dev/null && echo awake)\" " +
             "\"$(pgrep -x wlsunset >/dev/null && echo night)\" " +
-            "\"$(bluetoothctl show 2>/dev/null | awk '/Powered:/ { print $2; exit }')\""]
+            "\"$(bluetoothctl show 2>/dev/null | awk '/Powered:/ { print $2; exit }')\" " +
+            "\"$(command -v timeshift-launcher >/dev/null && echo timeshift)\""]
         stdout: StdioCollector {
             onStreamFinished: {
                 const lines = text.split("\n")
@@ -71,6 +73,7 @@ BarModule {
                 // "yes"/"no" from a controller; empty = no adapter
                 root.btPresent = (lines[4] ?? "") !== ""
                 root.btOn = lines[4] === "yes"
+                root.hasTimeshift = lines[5] === "timeshift"
             }
         }
     }
@@ -429,6 +432,11 @@ BarModule {
                 model: [
                     { icon: "󰂚", label: "Notifications",
                       run: () => notifHistory.visible = true },
+                    // Butterbian (btrfs + Timeshift): roll back a bad update.
+                    // timeshift-launcher asks for the password itself and,
+                    // on Wayland, lets root's window onto Xwayland (xhost).
+                    root.hasTimeshift ? { icon: "󰁯", label: "Snapshots",
+                      run: () => Quickshell.execDetached(["timeshift-launcher"]) } : null,
                     { icon: "󰚰", label: "Check updates",
                       run: () => Quickshell.execDetached(["kitty", "-e", "sh", "-c",
                           "sudo apt update && apt list --upgradable; " +
@@ -439,7 +447,7 @@ BarModule {
                       run: () => Quickshell.execDetached([Theme.configDir + "/scripts/bar", "restart"]) },
                     { icon: "󰐥", label: "Power menu",
                       run: () => power.visible = true }
-                ]
+                ].filter(r => r)
                 CommandRow {}
             }
         }

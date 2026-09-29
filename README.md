@@ -93,6 +93,7 @@ Everything else is stock Debian:
 | `cliphist` + `wl-clipboard`   | Clipboard history                    |
 | `swayidle` + `wlopm`          | Monitor power-off after 15 min idle  |
 | `xdg-desktop-portal-wlr/gtk`  | Screen sharing, file dialogs         |
+| `x11-xserver-utils`           | `xhost`, so password-prompted root apps (Timeshift, GParted) can open a window |
 | `kitty`                       | Terminal (via butterscripts)         |
 | `thunar` + plugins            | File manager                         |
 | `pipewire`                    | Audio                                |
@@ -140,7 +141,9 @@ and headsets, with a warning when one runs low and power saver switched on
 by itself when a laptop drops to 20%; **Quick settings** — power profile,
 keep awake, microphone, night light, do not disturb, Bluetooth and a focus
 timer, each tile saying what it is and its state; and **System** —
-notifications, check updates, keybindings, restart bar, power menu.
+notifications, snapshots (Timeshift, on Butterbian's btrfs installs), check
+updates, keybindings, restart bar, power menu. An encrypted disk shows a
+lock on its meter in the system card.
 
 Details in [`config/quickshell/README.md`](config/quickshell/README.md).
 
