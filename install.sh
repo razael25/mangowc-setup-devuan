@@ -107,7 +107,7 @@ PACKAGES_CORE=(
 
 # quickshell pulls its qml6 modules in through Recommends
 PACKAGES_BAR=(
-    quickshell rofi dunst libnotify-bin
+    quickshell rofi dunst libnotify-bin btop
     pamixer playerctl brightnessctl wlsunset power-profiles-daemon
     network-manager-gnome
 )

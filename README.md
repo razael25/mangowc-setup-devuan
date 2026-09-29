@@ -97,6 +97,7 @@ Everything else is stock Debian:
 | `pipewire`                    | Audio                                |
 | `nwg-look`, `nwg-displays`    | GTK / display configurators          |
 | `wlsunset`, `power-profiles-daemon`, `brightnessctl` | The command menu's toggles |
+| `btop`                        | The metrics card's full view         |
 
 > 💡 _Themes by [vinceliuice](https://github.com/vinceliuice) — Orchis (GTK) and Colloid (icons)._
 
@@ -116,6 +117,7 @@ single `mmsg watch` stream — no polling, no patch — and clicks go back throu
 | Layout      | layout + tweaks picker   | (empty bar: same)       | cycle layouts  |
 | Media       | play / pause             | now-playing popup       | prev / next    |
 | Weather     | 3-day forecast           | location / units        | —              |
+| CPU / RAM   | what's using it (top programs) | btop              | —              |
 | Volume      | mute                     | volume popup: slider, output picker, pavucontrol | ±2% |
 | Network     | network app (Wi-Fi, VPN, Bluetooth) | nm-connection-editor | —  |
 | Clock       | calendar                 | —                       | —              |
@@ -224,6 +226,7 @@ still shows you which window is live. The opacity slider needs mangowc
 │   ├── screenshot        # grim/slurp: full | region
 │   ├── changevolume      # volume + notifications
 │   ├── keybinds          # config.conf's binds for the keybinds popup
+│   ├── procs             # /proc snapshot for the metrics card
 │   ├── power / network
 ├── quickshell/           # the bar (see its README)
 ├── quickshell-network/   # the network app (its own qs instance)

@@ -1,12 +1,24 @@
 import QtQuick
 
-// System numbers, flat on the bar: CPU / RAM / root fs ("/" tag is the
+// System numbers on the bar: CPU / RAM / root fs ("/" tag is the
 // mountpoint), plus battery on laptops (hidden when none). Text tags in
 // the slstatus color story; battery keeps its state-encoding glyph.
-// No pill background: boxes are for things you can click.
+// A pill because it's clickable: left opens the "what's using it" card
+// (MetricsPopup), right goes straight to btop.
 BarModule {
-    interactive: false
-    color: "transparent"
+    id: root
+
+    onClicked: mouse => {
+        if (mouse.button === Qt.RightButton)
+            card.openBtop()
+        else if (mouse.button === Qt.LeftButton)
+            card.visible = !card.visible
+    }
+
+    MetricsPopup {
+        id: card
+        anchorItem: root
+    }
 
     // dim dot — keeps "RAM 15% / 19%" from scanning as a fraction
     component Sep: Text {

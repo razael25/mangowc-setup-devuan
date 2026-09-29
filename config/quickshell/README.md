@@ -59,6 +59,11 @@ does this), or `scripts/bar restart|log` which handles the `-p` flag.
   three on a second press. Logout is `Wm.logout()` (mango: `quit`).
   `scripts/power` opens it over IPC and falls back to the old rofi list
   when the bar isn't running. Mango only so far.
+- `MetricsPopup.qml` — click CPU/RAM/disk: CPU and RAM meters, then the
+  busiest programs. `scripts/procs` prints a /proc snapshot (plain awk,
+  nothing WM-specific); the card diffs two of them for current CPU, as a
+  share of the whole machine, grouped by program. Samples only while
+  open. Right-click the module, or the card's button, opens btop.
 - `VolumePopup.qml` — right-click on Volume: slider plus a sink picker
   (every PipeWire output, click to make it the default) and a
   pavucontrol row. Reads and writes through Quickshell's Pipewire
