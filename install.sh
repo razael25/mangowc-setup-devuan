@@ -113,7 +113,7 @@ PACKAGES_BAR=(
 )
 
 PACKAGES_WAYLAND=(
-    grim slurp wl-clipboard cliphist
+    grim slurp swappy wl-clipboard cliphist
     wlr-randr swayidle wlopm
     xdg-desktop-portal-wlr xdg-desktop-portal-gtk
 )
@@ -244,6 +244,12 @@ fi
 # D-Bus-activated case (a notification arriving before autostart ran).
 mkdir -p ~/.config/dunst
 ln -sfn "$CONFIG_DIR/dunst/dunstrc" ~/.config/dunst/dunstrc
+# swappy (screenshot annotate) saves where the other screenshots go; a
+# swappy config of the user's own is left alone
+if [ ! -e ~/.config/swappy/config ] || [ -L ~/.config/swappy/config ]; then
+    mkdir -p ~/.config/swappy
+    ln -sfn "$CONFIG_DIR/swappy/config" ~/.config/swappy/config
+fi
 
 # Setup directories
 xdg-user-dirs-update

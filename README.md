@@ -89,6 +89,7 @@ Everything else is stock Debian:
 |-------------------------------|--------------------------------------|
 | `dunst`                       | Notifications (layer-shell native)   |
 | `grim` + `slurp`              | Screenshots                          |
+| `swappy`                      | Screenshot annotate (arrows, text, blur) |
 | `cliphist` + `wl-clipboard`   | Clipboard history                    |
 | `swayidle` + `wlopm`          | Monitor power-off after 15 min idle  |
 | `xdg-desktop-portal-wlr/gtk`  | Screen sharing, file dialogs         |
@@ -182,7 +183,9 @@ Super is the mod key. Same muscle memory as the other setups.
 | `Super + Shift + M`    | Command menu                           |
 | `Super + Shift + N`    | Network app                            |
 | `Super + Shift + T`    | Layout / tweaks picker                 |
-| `Super + S` / `Super + Shift + S` | Screenshot full / region (to `~/Screenshots`) |
+| `Super + S` / `Super + Shift + S` | Screenshot full / region (to `~/Screenshots`); `Print` / `Shift + Print` too |
+| `Super + Ctrl + S` / `Ctrl + Print` | Screenshot region to the clipboard |
+| `Super + Alt + S`      | Screenshot region, annotate in swappy  |
 
 `Super + /` opens the keybinds popup: every bind in `config.conf`,
 grouped by the config's `# --- section ---` headers. Type to filter;
