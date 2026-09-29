@@ -224,7 +224,7 @@ still shows you which window is live. The opacity slider needs mangowc
 │   ├── screenshot        # grim/slurp: full | region
 │   ├── changevolume      # volume + notifications
 │   ├── keybinds          # config.conf's binds for the keybinds popup
-│   ├── power / network / weather
+│   ├── power / network
 ├── quickshell/           # the bar (see its README)
 ├── quickshell-network/   # the network app (its own qs instance)
 ├── rofi/                 # config / power .rasi (colors theme-managed)

@@ -8,11 +8,12 @@ import Quickshell.Io
 // an offline boot just shows no weather.
 //
 // Location: by default wttr.in locates by IP — which reports the VPN exit
-// node's weather when a VPN is up. Pin it by writing a city/zip to
-// ~/.config/bspwm/weather-location (plain text, e.g. "Cleveland" or 44101).
+// node's weather when a VPN is up. Pin it from the forecast card's field
+// (right-click jumps there), which writes a city/zip to weather-location
+// in the config folder (plain text, e.g. "Cleveland" or 44101).
 //
 // Units: auto — imperial locales get °F/mph, everyone else °C/km/h.
-// Override with a single "f" or "c" in ~/.config/bspwm/weather-units.
+// The card's °F/°C pills write a single "f" or "c" to weather-units.
 BarModule {
     id: root
 
@@ -22,6 +23,7 @@ BarModule {
     property int code: 113
 
     property string unitsOverride: ""
+    property string location: ""
     readonly property bool useF: unitsOverride === "f" ? true
                                : unitsOverride === "c" ? false
                                : Qt.locale().measurementSystem !== Locale.MetricSystem
@@ -44,7 +46,9 @@ BarModule {
             fetch.running = false
             fetch.running = true
         }
+        onLoaded: root.location = text().trim()
         onLoadFailed: {
+            root.location = ""
             fetch.running = false
             fetch.running = true
         }
@@ -71,7 +75,7 @@ BarModule {
 
     onClicked: mouse => {
         if (mouse.button === Qt.RightButton)
-            Quickshell.execDetached([Theme.configDir + "/scripts/weather"])
+            forecast.openSettings()
         else
             forecast.visible = !forecast.visible
     }
@@ -79,6 +83,8 @@ BarModule {
     WeatherPopup {
         id: forecast
         anchorItem: root
+        location: root.location
+        units: root.unitsOverride
     }
 
     property string _buf: ""
@@ -91,15 +97,21 @@ BarModule {
         stdout: SplitParser {
             onRead: line => root._buf += line
         }
-        onRunningChanged: {
-            if (running) {
-                root._buf = ""
-            } else {
-                try {
-                    root.parse(JSON.parse(root._buf))
-                } catch (e) {
-                    retry.start() // network hiccup — try again soon
-                }
+        onRunningChanged: if (running) root._buf = ""
+        // st 1 = killed by a restart (a new location): not a failure, the
+        // next run answers. Otherwise curl's own verdict counts — an unknown
+        // location (404) or no network — and the card says so.
+        onExited: (code, st) => {
+            if (st !== 0)
+                return
+            try {
+                if (code !== 0)
+                    throw new Error("curl " + code)
+                root.parse(JSON.parse(root._buf))
+                forecast.failed = false
+            } catch (e) {
+                forecast.failed = true
+                retry.start() // try again soon
             }
         }
     }
