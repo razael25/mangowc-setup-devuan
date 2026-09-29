@@ -10,6 +10,11 @@ import Quickshell.Widgets
 // "Settings" category: display, sound, GTK, power and the like — not the
 // broader "System", which also claims terminals and file managers);
 // Ctrl+Tab cycles them.
+// Actions: the bar's own tools (power menu, keybindings, wallpaper, what's
+// running, screen off, updates…) are searchable too, drawn as glyph tiles
+// so they read differently from apps. They show up in All once you type,
+// and all together under the Actions chip; most just open the popup their
+// shortcut opens, over the same IPC.
 // With nothing typed the grid is alphabetical, so every app keeps its
 // spot. How often and how recently you launch something (launcher-history
 // in the config folder) only breaks ties between search matches.
@@ -23,7 +28,7 @@ Popout {
     property int selected: 0
     property var history: ({})           // id → {count, last (epoch s)}
 
-    readonly property var chips: ["All", "Apps", "Settings"]
+    readonly property var chips: ["All", "Apps", "Settings", "Actions"]
     readonly property int columns: 6
     readonly property int cellW: 112
     readonly property int cellH: 100
@@ -33,7 +38,47 @@ Popout {
     // quickshell fills this in the background after start; the binding
     // follows along, so an early open just shows what's scanned so far
     readonly property var apps: DesktopEntries.applications.values.filter(a => !a.noDisplay)
-    readonly property var results: search(apps, query, chip, history)
+    readonly property var results: search(apps, actions, query, chip, history)
+
+    // name/keywords feed the same search as apps; run is what Enter does
+    // (the launcher has already closed by then)
+    readonly property var actions: [
+        action("power", "Power menu", "󰐥", "shut down reboot restart log out logout power off",
+               () => openPopup("power")),
+        action("keybinds", "Keybindings", "󰌌", "keys shortcuts hotkeys help cheatsheet",
+               () => openPopup("keybinds")),
+        action("wallpaper", "Wallpaper", "󰋩", "background theme colors colours",
+               () => openPopup("wallpapers")),
+        action("layout", "Layout & tweaks", "󰕰", "tiling gaps borders blur shadows animations opacity bar height scale effects",
+               () => openPopup("layouts")),
+        action("commands", "Command menu", "󰘳", "quick settings night light keep awake caffeine dnd do not disturb pomodoro timer brightness power profile",
+               () => openPopup("commands")),
+        action("metrics", "What's running", "󰍛", "task manager processes cpu memory ram kill btop system monitor",
+               () => openPopup("metrics")),
+        action("weather", "Weather", "󰖐", "forecast temperature location",
+               () => openPopup("weather")),
+        action("network", "Network", "󰖩", "wifi wi-fi vpn bluetooth ethernet internet",
+               () => run(["scripts/network"])),
+        action("screen-off", "Screen off", "󰌢", "monitor display blank",
+               () => run(["scripts/screen-off"])),
+        // a beat for the launcher to unmap before slurp grabs the screen
+        action("screenshot-region", "Screenshot (region)", "󰻛", "capture grab snip select",
+               () => Quickshell.execDetached(["sh", "-c", "sleep 0.2; exec \"$0\" region",
+                                              Theme.configDir + "/scripts/screenshot"])),
+        action("screenshot-full", "Screenshot (full screen)", "󰻛", "capture grab whole screen",
+               () => Quickshell.execDetached(["sh", "-c", "sleep 0.2; exec \"$0\" full",
+                                              Theme.configDir + "/scripts/screenshot"])),
+        action("updates", "Check for updates", "󰚰", "upgrade apt packages software",
+               () => Quickshell.execDetached(["kitty", "-e", "sh", "-c",
+                   "sudo apt update && apt list --upgradable; printf '\\ndone - press enter to close '; read _"])),
+        action("restart-bar", "Restart bar", "󰑓", "quickshell panel reload",
+               () => run(["scripts/bar", "restart"])),
+        action("reload", "Reload config", "󰑐", "window manager wm config.conf",
+               () => Wm.reloadConfig()),
+        action("about", "About this system", "󰋼", "system info fastfetch neofetch version specs hardware",
+               () => Quickshell.execDetached(["kitty", "--hold", "sh", "-c",
+                   "fastfetch || echo 'fastfetch is not installed: sudo apt install fastfetch'"]))
+    ]
 
     centered: true
     cardWidth: columns * cellW + 2 * cardPadding
@@ -76,6 +121,22 @@ Popout {
         }
     }
 
+    function action(id, name, glyph, keywords, fn) {
+        return { isAction: true, id: "action:" + id, name: name, glyph: glyph,
+                 keywords: keywords.split(" "), genericName: "", command: [],
+                 categories: [], run: fn }
+    }
+
+    function openPopup(target) {
+        Quickshell.execDetached(["qs", "-p", Theme.configDir + "/quickshell",
+                                 "ipc", "call", target, "toggle"])
+    }
+
+    // a script from the config folder: ["scripts/bar", "restart"]
+    function run(argv) {
+        Quickshell.execDetached([Theme.configDir + "/" + argv[0]].concat(argv.slice(1)))
+    }
+
     function isSettings(a) {
         return a.categories.includes("Settings")
     }
@@ -102,12 +163,15 @@ Popout {
         return h.count / (1 + Math.max(days, 0) / 7)
     }
 
-    function search(list, q, chipIndex, hist) {
+    function search(list, acts, q, chipIndex, hist) {
+        const words = q.toLowerCase().split(/\s+/).filter(w => w !== "")
         let pool = list
         if (chipIndex === 1) pool = pool.filter(a => !isSettings(a))
         else if (chipIndex === 2) pool = pool.filter(a => isSettings(a))
+        else if (chipIndex === 3) pool = acts
+        // All: apps only until you type, so the resting grid stays apps
+        else if (words.length) pool = pool.concat(acts)
 
-        const words = q.toLowerCase().split(/\s+/).filter(w => w !== "")
         if (!words.length)
             return pool.slice().sort((a, b) => a.name.localeCompare(b.name))
 
@@ -122,7 +186,12 @@ Popout {
             if (s)
                 scored.push({ app: a, s: s, f: frecency(a.id, hist) })
         }
-        scored.sort((x, y) => y.s - x.s || y.f - x.f || x.app.name.localeCompare(y.app.name))
+        // ties: your launch history first, then the bar's own actions over
+        // apps ("shut" is the power menu before any app with it in its
+        // keywords), then A–Z
+        scored.sort((x, y) => y.s - x.s || y.f - x.f
+                    || (y.app.isAction ? 1 : 0) - (x.app.isAction ? 1 : 0)
+                    || x.app.name.localeCompare(y.app.name))
         return scored.map(x => x.app)
     }
 
@@ -131,7 +200,9 @@ Popout {
             return
         remember(a.id)
         root.visible = false
-        if (a.runInTerminal)
+        if (a.isAction)
+            a.run()
+        else if (a.runInTerminal)
             Quickshell.execDetached(["kitty", "-e"].concat(a.command))
         else
             a.execute()
@@ -227,7 +298,7 @@ Popout {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: field.text === ""
-                    text: "Search apps"
+                    text: "Search apps and actions"
                     color: Qt.alpha(Theme.fg, 0.35)
                     font: field.font
                 }
@@ -316,7 +387,27 @@ Popout {
                 anchors.horizontalCenter: parent.horizontalCenter
                 y: 12
                 implicitSize: 44
-                source: Quickshell.iconPath(cell.modelData.icon, "application-x-executable")
+                visible: !cell.modelData.isAction
+                source: cell.modelData.isAction ? ""
+                      : Quickshell.iconPath(cell.modelData.icon, "application-x-executable")
+            }
+
+            // actions: a tinted tile with the bar's glyph, not an app icon
+            Rectangle {
+                anchors.fill: icon
+                visible: !!cell.modelData.isAction
+                radius: 10
+                color: Qt.alpha(Theme.accent, 0.16)
+                border.width: 1
+                border.color: Qt.alpha(Theme.accent, 0.35)
+
+                Text {
+                    anchors.centerIn: parent
+                    text: cell.modelData.glyph ?? ""
+                    color: Theme.accent
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 22
+                }
             }
 
             Text {

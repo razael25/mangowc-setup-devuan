@@ -221,6 +221,7 @@ Singleton {
     function cycleTag(dir) { dispatch(dir > 0 ? "viewtoright_have_client" : "viewtoleft_have_client") }
 
     function logout() { dispatch("quit") }
+    function reloadConfig() { Quickshell.execDetached([Theme.configDir + "/scripts/mango-reload"]) }
 
     // processes this session can't lose: the metrics card won't offer to
     // end them (it adds the ones every setup shares). mmsg is the bar's own

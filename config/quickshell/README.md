@@ -64,7 +64,10 @@ icon theme in as `QS_ICON_THEME` (quickshell doesn't follow it itself).
   search over name / generic name / keywords / program, All · Apps ·
   Settings chips, alphabetical until you type; launch history
   (`launcher-history`) only breaks ties between matches. Terminal apps
-  run in kitty. `scripts/launcher` opens it and falls back to rofi when
+  run in kitty. Actions (power menu, keybindings, wallpaper, layout,
+  what's running, screen off, screenshots, updates, restart bar, reload
+  config, about) are searchable too and have their own chip; most open
+  their popup over IPC, reload goes through `Wm.reloadConfig()`. `scripts/launcher` opens it and falls back to rofi when
   the bar isn't running.
 - `MetricsPopup.qml` — click CPU/RAM/disk: CPU and RAM meters, then the
   busiest programs. `scripts/procs` prints a /proc snapshot (plain awk,
