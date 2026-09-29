@@ -18,7 +18,8 @@ ShellRoot {
 
         title: "Network"
         implicitWidth: 440
-        implicitHeight: Math.min(content.implicitHeight + 32,
+        // tall enough for the share view wherever there's Wi-Fi to share
+        implicitHeight: Math.min(Math.max(wifiDev !== "" ? 460 : 0, content.implicitHeight + 32),
                                  (screen ? screen.height : 1080) * 0.8)
         color: Theme.bg
 
@@ -37,6 +38,14 @@ ShellRoot {
         // closing the window (super+q etc.) must end the process too, or the
         // bar's toggle script sees a headless instance and gets out of sync
         onVisibleChanged: if (!visible && ready) Qt.quit()
+
+        // `scripts/network share` (the launcher's Share Wi-Fi) starts the app
+        // straight into the share view
+        onReadyChanged: if (ready && Quickshell.env("NETWORK_VIEW") === "share") openShare()
+        IpcHandler {
+            target: "network"
+            function share(): void { win.openShare() }
+        }
 
         property var devices: []    // {dev, type, state, conn}
         property bool wifiOn: false
@@ -439,6 +448,100 @@ ShellRoot {
             return r ? "↓ " + fmtRate(r.down) + "  ↑ " + fmtRate(r.up) : ""
         }
 
+        // --- share the Wi-Fi you're on: a QR code a phone scans to join ---
+        // The password comes from NetworkManager (your desktop session may
+        // read it) and goes to qrencode over stdin — never an argument other
+        // users could see in ps, never a file: the PNG comes back base64
+        // and lives in memory until the share view closes.
+
+        property bool sharing: false
+        property string shareSsid: ""
+        property string sharePw: ""
+        property string shareQr: ""       // data: URL of the PNG
+        property string shareError: ""
+        property bool shareShowPw: false
+        property string _payload: ""
+
+        function openShare() {
+            sharing = true
+            shareQr = ""
+            sharePw = ""
+            shareError = ""
+            shareShowPw = false
+            shareSsid = currentNet ? currentNet.ssid : ""
+            if (wifiDev === "" || !currentNet) {
+                shareError = "Not connected to Wi-Fi"
+                return
+            }
+            shareInfoProc.command = ["sh", "-c",
+                "u=$(nmcli -g GENERAL.CON-UUID device show \"$1\"); " +
+                "echo \"ssid:$(nmcli -g 802-11-wireless.ssid c show \"$u\")\"; " +
+                "echo \"km:$(nmcli -g 802-11-wireless-security.key-mgmt c show \"$u\" 2>/dev/null)\"; " +
+                "echo \"hidden:$(nmcli -g 802-11-wireless.hidden c show \"$u\")\"; " +
+                "echo \"psk:$(nmcli -s -g 802-11-wireless-security.psk c show \"$u\" 2>/dev/null)\"",
+                "sh", wifiDev]
+            shareInfoProc.running = true
+        }
+
+        function closeShare() {
+            sharing = false
+            shareQr = ""
+            sharePw = ""
+            _payload = ""
+        }
+
+        // the Wi-Fi QR format escapes \ ; , : " with a backslash
+        function qrEsc(v) {
+            return v.replace(/([\\;,:"])/g, "\\$1")
+        }
+
+        Process {
+            id: shareInfoProc
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    const f = {}
+                    for (const l of text.split("\n")) {
+                        const i = l.indexOf(":")
+                        if (i > 0)
+                            // terse nmcli escapes : and \ with a backslash
+                            f[l.slice(0, i)] = l.slice(i + 1).replace(/\\([\\:])/g, "$1")
+                    }
+                    const ssid = f.ssid || win.shareSsid
+                    const open = !f.km
+                    win.shareSsid = ssid
+                    win.sharePw = open ? "" : (f.psk ?? "")
+                    if (!open && win.sharePw === "") {
+                        win.shareError = "Couldn't read the saved password for " + ssid
+                        return
+                    }
+                    win._payload = "WIFI:T:" + (open ? "nopass" : "WPA") + ";S:" + win.qrEsc(ssid) + ";"
+                        + (open ? "" : "P:" + win.qrEsc(win.sharePw) + ";")
+                        + (f.hidden === "yes" ? "H:true;" : "") + ";"
+                    qrProc.running = true
+                }
+            }
+        }
+
+        Process {
+            id: qrProc
+            command: ["sh", "-c", "qrencode -t PNG -s 8 -m 2 -o - | base64 -w0"]
+            stdinEnabled: true
+            onStarted: {
+                write(win._payload)
+                stdinEnabled = false      // EOF: qrencode reads until here
+            }
+            onRunningChanged: if (!running) stdinEnabled = true
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    const b64 = text.trim()
+                    if (b64 === "")
+                        win.shareError = "Install qrencode to share: sudo apt install qrencode"
+                    else if (win.sharing)
+                        win.shareQr = "data:image/png;base64," + b64
+                }
+            }
+        }
+
         // --- the header's words ---
 
         readonly property string headerName: !primary ? "Not connected"
@@ -693,10 +796,107 @@ ShellRoot {
             // password field, and this holds focus the rest of the time.
             focus: true
             Keys.onEscapePressed: {
-                if (win.pwFor !== "")
+                if (win.sharing)
+                    win.closeShare()
+                else if (win.pwFor !== "")
                     win.pwFor = ""
                 else
                     Qt.quit()
+            }
+
+            // share view: over everything else while open
+            Rectangle {
+                anchors.fill: parent
+                visible: win.sharing
+                z: 10
+                color: Theme.bg
+
+                MouseArea { anchors.fill: parent }   // nothing underneath takes clicks
+
+                Column {
+                    anchors.centerIn: parent
+                    width: parent.width - 48
+                    spacing: 14
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        text: "Share " + win.shareSsid
+                        color: Theme.fg
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 16
+                        font.bold: true
+                        elide: Text.ElideRight
+                    }
+
+                    // QR on white: scanners want the contrast whatever the theme
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 236
+                        height: 236
+                        radius: 10
+                        color: "white"
+
+                        Image {
+                            anchors.centerIn: parent
+                            width: 216
+                            height: 216
+                            visible: win.shareQr !== ""
+                            source: win.shareQr
+                            smooth: false          // crisp modules
+                            fillMode: Image.PreserveAspectFit
+                        }
+                        Text {
+                            anchors.centerIn: parent
+                            width: parent.width - 32
+                            visible: win.shareQr === ""
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.Wrap
+                            text: win.shareError !== "" ? win.shareError : "…"
+                            color: win.shareError !== "" ? "#b3261e" : "#555"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                        }
+                    }
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: win.shareError === "" ? "Scan to join this network" : ""
+                        color: Theme.fg
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 13
+                    }
+
+                    // the password on request, selectable to copy
+                    TextEdit {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        visible: win.shareShowPw && win.sharePw !== ""
+                        readOnly: true
+                        selectByMouse: true
+                        text: win.sharePw
+                        color: Theme.fg
+                        selectionColor: Qt.alpha(Theme.accent, 0.4)
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 14
+                        font.bold: true
+                    }
+
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: 10
+
+                        SmallButton {
+                            visible: win.sharePw !== ""
+                            label: win.shareShowPw ? "hide password" : "show password"
+                            onClicked: win.shareShowPw = !win.shareShowPw
+                        }
+                        SmallButton {
+                            label: "back"
+                            onClicked: win.closeShare()
+                        }
+                    }
+                }
             }
 
             Flickable {
@@ -730,7 +930,7 @@ ShellRoot {
                             anchors.left: heroIcon.right
                             anchors.leftMargin: 14
                             anchors.right: heroToggle.left
-                            anchors.rightMargin: 56
+                            anchors.rightMargin: qrBtn.visible ? 100 : 56
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 3
 
@@ -763,7 +963,37 @@ ShellRoot {
                             }
                         }
 
+                        // share this Wi-Fi as a QR code
+                        Rectangle {
+                            id: qrBtn
+                            visible: win.currentNet !== null
+                            anchors.right: wifiLabel.left
+                            anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 32
+                            height: 32
+                            radius: 8
+                            color: Qt.alpha(Theme.fg, qrMa.containsMouse ? 0.18 : 0.08)
+                            border.width: 1
+                            border.color: Qt.alpha(Theme.fg, 0.12)
+                            Text {
+                                anchors.centerIn: parent
+                                text: "󰐲"
+                                color: Theme.fg
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 16
+                            }
+                            MouseArea {
+                                id: qrMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: win.openShare()
+                            }
+                        }
+
                         Text {
+                            id: wifiLabel
                             visible: heroToggle.visible
                             anchors.right: heroToggle.left
                             anchors.rightMargin: 8

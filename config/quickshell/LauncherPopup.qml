@@ -59,6 +59,8 @@ Popout {
                () => openPopup("weather")),
         action("network", "Network", "󰖩", "wifi wi-fi vpn bluetooth ethernet internet",
                () => run(["scripts/network"])),
+        action("share-wifi", "Share Wi-Fi", "󰐲", "qr code password guest phone join wifi wi-fi",
+               () => run(["scripts/network", "share"])),
         action("screen-off", "Screen off", "󰌢", "monitor display blank",
                () => run(["scripts/screen-off"])),
         // a beat for the launcher to unmap before slurp grabs the screen

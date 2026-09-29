@@ -109,7 +109,7 @@ PACKAGES_CORE=(
 PACKAGES_BAR=(
     quickshell rofi dunst libnotify-bin btop
     pamixer playerctl brightnessctl wlsunset power-profiles-daemon
-    network-manager-gnome network-manager-config-connectivity-debian
+    network-manager-gnome network-manager-config-connectivity-debian qrencode
 )
 
 PACKAGES_WAYLAND=(

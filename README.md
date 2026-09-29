@@ -100,6 +100,7 @@ Everything else is stock Debian:
 | `wlsunset`, `power-profiles-daemon`, `brightnessctl` | The command menu's toggles |
 | `network-manager-config-connectivity-debian` | Lets the network icon tell "no internet" and hotel/café sign-in pages from a working connection |
 | `btop`                        | The metrics card's full view         |
+| `qrencode`                    | The network app's Share Wi-Fi QR code |
 
 > 💡 _Themes by [vinceliuice](https://github.com/vinceliuice) — Orchis (GTK) and Colloid (icons)._
 
