@@ -67,6 +67,11 @@ Popout {
         return out
     }
 
+    function scrollBy(dy) {
+        body.contentY = Math.max(0, Math.min(body.contentY + dy,
+                                             body.contentHeight - body.height))
+    }
+
     function edit(line) {
         root.visible = false
         Quickshell.execDetached([Theme.configDir + "/scripts/keybinds", "open", String(line)])
@@ -169,6 +174,15 @@ Popout {
                 else
                     event.accepted = false
             }
+            // the list scrolls from the keyboard while you type
+            Keys.onUpPressed: root.scrollBy(-60)
+            Keys.onDownPressed: root.scrollBy(60)
+            Keys.onPressed: event => {
+                if (event.key === Qt.Key_PageUp || event.key === Qt.Key_PageDown) {
+                    root.scrollBy((event.key === Qt.Key_PageUp ? -1 : 1) * body.height * 0.9)
+                    event.accepted = true
+                }
+            }
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
@@ -203,7 +217,11 @@ Popout {
         boundsBehavior: Flickable.StopAtBounds
         clip: true
 
-        onContentHeightChanged: if (root.query === "") root.fullHeight = contentHeight
+        onContentHeightChanged: {
+            if (root.query === "")
+                root.fullHeight = contentHeight
+            contentY = Math.max(0, Math.min(contentY, contentHeight - height))
+        }
 
         Text {
             visible: root.query !== "" && root.columns.every(c => c.length === 0)
@@ -331,5 +349,17 @@ Popout {
                 }
             }
         }
+    }
+
+    // only on screens too short for the whole list (768p laptops)
+    Rectangle {
+        visible: body.contentHeight > body.height
+        anchors.right: body.right
+        anchors.rightMargin: -8
+        y: body.y + body.visibleArea.yPosition * body.height
+        width: 3
+        height: body.visibleArea.heightRatio * body.height
+        radius: 2
+        color: Qt.alpha(Theme.fg, 0.3)
     }
 }
