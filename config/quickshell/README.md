@@ -43,7 +43,11 @@ icon theme in as `QS_ICON_THEME` (quickshell doesn't follow it itself).
 - `TogglePill.qml` — the quick-settings pill, shared by the command
   menu and the picker's Effects row.
 - `Sys.qml` — caps lock read from `/sys/class/leds/*capslock`, popups
-  always card-only (`composited: false`).
+  always card-only (`composited: false`). Network state follows
+  `nmcli monitor` (instant), plus Wi-Fi signal strength and
+  NetworkManager's connectivity verdict (sign-in page / no internet),
+  which needs its connectivity check on — the installer adds Debian's
+  `network-manager-config-connectivity-debian`.
 - `Commands.qml` — keep-awake is a `systemd-inhibit --what=idle` holder
   process (swayidle watches logind for idle inhibitors, so this also
   keeps the monitor from powering down); night light is wlsunset; the

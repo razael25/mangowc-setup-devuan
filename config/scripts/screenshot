@@ -32,7 +32,9 @@ case "$mode" in
         # a throwaway file only so the notification can show the shot
         OUT="${XDG_RUNTIME_DIR:-/tmp}/screenshot-clipboard.png"
         grim -g "$geom" "$OUT" || exit 1
-        wl-copy --type image/png < "$OUT" || exit 1
+        # wl-copy stays behind to serve the clipboard; point its output at
+        # /dev/null so it doesn't hold open the pipe of whoever ran this
+        wl-copy --type image/png < "$OUT" >/dev/null 2>&1 || exit 1
         notify-send -a screenshot -i "$OUT" "Screenshot copied" "Paste it anywhere"
         exit 0 ;;
     edit)

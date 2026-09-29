@@ -3,7 +3,9 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Lightweight system metrics: cpu/mem/disk on a 3s tick, network on 10s.
+// Lightweight system metrics: cpu/mem/disk on a 3s tick. Network follows
+// `nmcli monitor` (connect, drop, VPN up, connectivity change show at once)
+// plus a slow poll for Wi-Fi signal strength, which the monitor doesn't report.
 Singleton {
     id: root
 
@@ -17,12 +19,25 @@ Singleton {
     property string netType: ""
     property bool vpnOn: false
     property string vpnName: ""
+    property int wifiSignal: -1        // 0–100 while on Wi-Fi, -1 unknown
+    // NetworkManager's verdict: full, limited, portal, none or unknown.
+    // Real only while its connectivity check is on (Debian's
+    // network-manager-config-connectivity-debian); without it NM just
+    // says full.
+    property string connectivity: "unknown"
+    property string checkUri: ""       // the check's URL: a sign-in page intercepts it
 
+    readonly property bool wireless: netType.indexOf("wireless") !== -1
     readonly property string netIcon: vpnOn ? "󰦝"
-                                    : netType.indexOf("wireless") !== -1 ? "󰤨"
-                                    : netType.indexOf("ethernet") !== -1 ? "󰈀"
-                                    : "󰤭"
+        : wireless ? (wifiSignal < 0 ? "󰤨" : wifiSignal < 20 ? "󰤯" : wifiSignal < 40 ? "󰤟"
+                      : wifiSignal < 60 ? "󰤢" : wifiSignal < 80 ? "󰤥" : "󰤨")
+        : netType.indexOf("ethernet") !== -1 ? "󰈀"
+        : "󰤭"
     readonly property bool online: netName !== ""
+    // connected, but the network wants a login page first (hotel, café)
+    readonly property bool signInNeeded: online && connectivity === "portal"
+    // connected to something that doesn't reach the internet
+    readonly property bool noInternet: online && (connectivity === "limited" || connectivity === "none")
 
     property var _prev: ({ idle: 0, total: 0 })
 
@@ -140,8 +155,31 @@ Singleton {
         dndRefresh.restart()
     }
 
+    // every change NetworkManager announces → one refresh (debounced: a
+    // connect fires a burst of lines)
+    Process {
+        id: netMonitor
+        command: ["nmcli", "monitor"]
+        running: true
+        stdout: SplitParser {
+            onRead: line => netDebounce.restart()
+        }
+        onExited: netMonitorRetry.restart()
+    }
     Timer {
-        interval: 10000
+        id: netMonitorRetry
+        interval: 5000
+        onTriggered: netMonitor.running = true
+    }
+    Timer {
+        id: netDebounce
+        interval: 300
+        onTriggered: netProc.running = true
+    }
+    // signal strength isn't announced: poll it on Wi-Fi, and keep a slow
+    // safety poll otherwise
+    Timer {
+        interval: root.wireless ? 15000 : 60000
         running: true
         repeat: true
         triggeredOnStart: true
@@ -149,14 +187,22 @@ Singleton {
     }
 
     // primary transport + vpn tracked separately: a vpn/wireguard/tun
-    // connection rides ON a transport, it isn't one
+    // connection rides ON a transport, it isn't one. One process, four
+    // sections: active connections, connectivity, the in-use AP's signal
+    // (cached scan, no rescan), the connectivity check URL.
     Process {
         id: netProc
-        command: ["nmcli", "-t", "-f", "NAME,TYPE", "connection", "show", "--active"]
+        command: ["sh", "-c",
+            "nmcli -t -f NAME,TYPE connection show --active; echo ===; " +
+            "nmcli networking connectivity; echo ===; " +
+            "nmcli -t -f IN-USE,SIGNAL device wifi list --rescan no 2>/dev/null | grep '^\\*' | head -1; echo ===; " +
+            "busctl get-property org.freedesktop.NetworkManager /org/freedesktop/NetworkManager " +
+            "org.freedesktop.NetworkManager ConnectivityCheckUri 2>/dev/null"]
         stdout: StdioCollector {
             onStreamFinished: {
+                const parts = text.split("===\n")
                 let name = "", type = "", vName = "", vOn = false
-                for (const line of text.trim().split("\n")) {
+                for (const line of (parts[0] ?? "").trim().split("\n")) {
                     const i = line.lastIndexOf(":")
                     if (i <= 0)
                         continue
@@ -175,6 +221,11 @@ Singleton {
                 root.netType = type
                 root.vpnOn = vOn
                 root.vpnName = vName
+                root.connectivity = (parts[1] ?? "").trim() || "unknown"
+                const sig = parseInt((parts[2] ?? "").trim().split(":")[1])
+                root.wifiSignal = type.indexOf("wireless") !== -1 && !isNaN(sig) ? sig : -1
+                const uri = (parts[3] ?? "").match(/"(.*)"/)
+                root.checkUri = uri ? uri[1] : ""
             }
         }
     }
