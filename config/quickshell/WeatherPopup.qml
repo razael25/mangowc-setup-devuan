@@ -9,6 +9,8 @@ import Quickshell.Io
 // "auto" unpins it) and °F/°C/auto. They write the weather-location and
 // weather-units files Weather.qml watches, so a change refetches at once.
 // Right-click on the module opens the card with the field focused.
+// "radar" swaps the forecast for the last hour of rain on a map
+// (RadarView); the card grows to fit and comes back when you leave.
 Popout {
     id: root
 
@@ -18,6 +20,9 @@ Popout {
     property string place: ""
     property var days: []   // {label, glyph, hi, lo, rain}
     property bool failed: false   // last fetch failed (bad location, offline)
+    property real lat: 0          // where the forecast is for, for the radar
+    property real lon: 0
+    property bool radar: false
 
     // the saved settings, fed by Weather.qml ("" = auto)
     property string location: ""
@@ -27,16 +32,22 @@ Popout {
     readonly property string unitsFile: Theme.configDir + "/weather-units"
     readonly property bool localeF: Qt.locale().measurementSystem !== Locale.MetricSystem
 
-    cardWidth: 300
-    cardHeight: 268
+    cardWidth: radar ? 420 : 300
+    cardHeight: radar ? 380 : 268
 
     // scriptable: qs -p ~/.config/mango/quickshell ipc call weather toggle
     IpcHandler {
         target: "weather"
         function toggle(): void { root.visible = !root.visible }
+        function radar(): void { root.visible = true; root.radar = true }
     }
 
-    onVisibleChanged: if (visible) field.text = location
+    onVisibleChanged: {
+        if (visible)
+            field.text = location
+        else
+            radar = false
+    }
     onLocationChanged: if (!field.activeFocus) field.text = location
 
     function openSettings() {
@@ -67,10 +78,43 @@ Popout {
 
     // where this forecast is for — also the tell when a VPN exit node is
     // fooling wttr.in's IP geolocation. A failed fetch says so here.
+    // forecast ⇄ radar, top right (radar needs a located forecast)
+    Rectangle {
+        id: radarBtn
+        visible: root.lat !== 0 || root.lon !== 0
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.topMargin: -4
+        width: radarText.implicitWidth + 16
+        height: 22
+        radius: 7
+        color: root.radar ? Theme.accent
+             : radarMa.containsMouse ? Qt.alpha(Theme.fg, 0.14) : Qt.alpha(Theme.fg, 0.06)
+
+        Behavior on color { ColorAnimation { duration: 120 } }
+
+        Text {
+            id: radarText
+            anchors.centerIn: parent
+            text: root.radar ? "󰖎  forecast" : "󰖎  radar"
+            color: root.radar ? Theme.bg : Qt.alpha(Theme.fg, 0.8)
+            font.family: Theme.fontFamily
+            font.pixelSize: 10
+        }
+        MouseArea {
+            id: radarMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.radar = !root.radar
+        }
+    }
+
     Text {
         id: placeLine
         anchors.left: parent.left
-        anchors.right: parent.right
+        anchors.right: radarBtn.visible ? radarBtn.left : parent.right
+        anchors.rightMargin: radarBtn.visible ? 8 : 0
         anchors.top: parent.top
         visible: root.place !== "" || root.failed
         text: root.failed
@@ -99,7 +143,20 @@ Popout {
         elide: Text.ElideRight
     }
 
+    RadarView {
+        visible: root.radar
+        active: root.radar && root.visible
+        lat: root.lat
+        lon: root.lon
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: header.bottom
+        anchors.topMargin: 10
+        anchors.bottom: parent.bottom
+    }
+
     Row {
+        visible: !root.radar
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: header.bottom
@@ -151,6 +208,7 @@ Popout {
 
     Column {
         id: settings
+        visible: !root.radar
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom

@@ -127,6 +127,8 @@ BarModule {
         forecast.place = a ? [a.areaName?.[0]?.value,
                               a.region?.[0]?.value || a.country?.[0]?.value]
                               .filter(Boolean).join(", ") : ""
+        forecast.lat = parseFloat(a?.latitude) || 0
+        forecast.lon = parseFloat(a?.longitude) || 0
         forecast.feels = (f ? c.FeelsLikeF : c.FeelsLikeC) ?? ""
         forecast.wind = f ? (c.windspeedMiles ? c.windspeedMiles + "mph" : "")
                           : (c.windspeedKmph ? c.windspeedKmph + "km/h" : "")
