@@ -6,14 +6,16 @@ import Quickshell.Io
 // dark basemap, centred on the forecast's spot. scripts/radar fetches the
 // 3x3 tile block into ~/.cache/mango/radar and prints where; this draws
 // it — land, rain, then place names on top so they stay readable.
-// Click pauses the loop, the corner buttons zoom, and while the card is
-// open the frames refresh every five minutes.
+// The corner buttons and the wheel zoom (capped where the mosaic runs
+// out of detail), the time chip pauses the loop, and a click on the map
+// opens the same spot on Windy's radar in the browser for a proper look.
+// While the card is open the frames refresh every five minutes.
 Item {
     id: view
 
     property real lat: 0
     property real lon: 0
-    property int zoom: 7          // wanted; 6 = region, 9 = city
+    property int zoom: 7          // wanted; 5 = a few states, 8 = the city
     property bool active: false   // fetch + animate only while shown
 
     // what's on screen (from the last successful fetch)
@@ -156,8 +158,10 @@ Item {
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
-        onClicked: view.paused = !view.paused
-        onWheel: wheel => view.zoom = Math.max(5, Math.min(10, view.zoom + (wheel.angleDelta.y > 0 ? 1 : -1)))
+        onClicked: Quickshell.execDetached(["xdg-open",
+            "https://www.windy.com/-Weather-radar-radar?radar," + view.lat.toFixed(3)
+            + "," + view.lon.toFixed(3) + "," + view.tz])
+        onWheel: wheel => view.zoom = Math.max(5, Math.min(8, view.zoom + (wheel.angleDelta.y > 0 ? 1 : -1)))
     }
 
     Text {
@@ -178,7 +182,15 @@ Item {
         width: timeText.implicitWidth + 14
         height: 20
         radius: 6
-        color: Qt.alpha(Theme.bg, 0.8)
+        color: Qt.alpha(Theme.bg, timeMa.containsMouse ? 0.95 : 0.8)
+
+        MouseArea {
+            id: timeMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: view.paused = !view.paused
+        }
 
         Text {
             id: timeText
@@ -205,7 +217,7 @@ Item {
             Rectangle {
                 id: zb
                 required property var modelData
-                readonly property bool can: view.zoom + modelData.d >= 5 && view.zoom + modelData.d <= 10
+                readonly property bool can: view.zoom + modelData.d >= 5 && view.zoom + modelData.d <= 8
                 width: 22; height: 20; radius: 6
                 color: Qt.alpha(Theme.bg, zbMa.containsMouse ? 0.95 : 0.8)
 
