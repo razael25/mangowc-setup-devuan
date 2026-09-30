@@ -135,7 +135,7 @@ PACKAGES_AUDIO=(
 PACKAGES_UTILITIES=(
     avahi-daemon acpi acpid upower
     fd-find xdg-user-dirs-gtk
-    eog nwg-displays fastfetch
+    eog fastfetch
     gawk curl wget
 )
 

@@ -36,7 +36,10 @@ Popout {
 
     // quickshell fills this in the background after start; the binding
     // follows along, so an early open just shows what's scanned so far
-    readonly property var apps: DesktopEntries.applications.values.filter(a => !a.noDisplay)
+    // nwg-displays only speaks sway/Hyprland and quits on mango: the
+    // Displays action stands in for it
+    readonly property var apps: DesktopEntries.applications.values.filter(
+        a => !a.noDisplay && !/^nwg-displays/.test(a.id))
     readonly property var results: search(apps, actions, query, chip, history)
 
     // name/keywords feed the same search as apps; run is what Enter does
@@ -60,6 +63,8 @@ Popout {
                () => run(["scripts/network"])),
         action("share-wifi", "Share Wi-Fi", "󰐲", "qr code password guest phone join wifi wi-fi",
                () => run(["scripts/network", "share"])),
+        action("displays", "Displays", "󰍹", "monitor screen output resolution scale rotate refresh rate arrange mirror vrr",
+               () => openPopup("displays")),
         action("screen-off", "Screen off", "󰌢", "monitor display blank",
                () => run(["scripts/screen-off"])),
         // a beat for the launcher to unmap before slurp grabs the screen

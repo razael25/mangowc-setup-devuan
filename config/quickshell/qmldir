@@ -38,3 +38,4 @@ MetricsPopup MetricsPopup.qml
 LauncherPopup LauncherPopup.qml
 QuickTile QuickTile.qml
 RadarView RadarView.qml
+DisplaysPopup DisplaysPopup.qml

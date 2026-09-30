@@ -97,7 +97,8 @@ Everything else is stock Debian:
 | `kitty`                       | Terminal (via butterscripts)         |
 | `thunar` + plugins            | File manager                         |
 | `pipewire`                    | Audio                                |
-| `nwg-look`, `nwg-displays`    | GTK / display configurators          |
+| `nwg-look`                    | GTK configurator                     |
+| `wlr-randr`                   | The Displays card: mode, scale, rotation, arrangement, kept across restarts and hotplug |
 | `wlsunset`, `power-profiles-daemon`, `brightnessctl` | The command menu's toggles |
 | `network-manager-config-connectivity-debian` | Lets the network icon tell "no internet" and hotel/café sign-in pages from a working connection |
 | `btop`                        | The metrics card's full view         |
@@ -122,7 +123,7 @@ single `mmsg watch` stream — no polling, no patch — and clicks go back throu
 | Tags        | view                     | —                       | cycle tags     |
 | Layout      | layout + tweaks picker   | (empty bar: same)       | cycle layouts  |
 | Media       | play / pause             | now-playing popup       | prev / next    |
-| Weather     | 3-day forecast           | location / units        | —              |
+| Weather     | 3-day forecast + radar   | location / units        | —              |
 | CPU / RAM   | meters, temperatures, disks (NAS included), disk activity, top programs | btop | — |
 | Volume      | volume popup: output + picker, microphone + live meter, per-app volume, pavucontrol | mute | ±2% |
 | Network     | network app: your connection + ping/speed/IP, VPN, known & other Wi-Fi, Bluetooth (the login page while it says "sign in") | nm-connection-editor | —  |
@@ -143,8 +144,19 @@ by itself when a laptop drops to 20%; **Quick settings** — power profile,
 keep awake, microphone, night light, do not disturb, Bluetooth and a focus
 timer, each tile saying what it is and its state; and **System** —
 notifications, snapshots (Timeshift, on Butterbian's btrfs installs), check
-updates, keybindings, restart bar, power menu. An encrypted disk shows a
-lock on its meter in the system card.
+updates, displays, keybindings, restart bar, power menu. An encrypted disk
+shows a lock on its meter in the system card.
+
+**Displays** (command menu, or the launcher's Displays action) draws your
+outputs on a stage: drag to arrange, pick resolution, refresh rate, scale,
+rotation and variable refresh per output, switch one off, identify them.
+Every change is a trial: keep it within 15 seconds or it reverts, so a
+mode the monitor can't show never leaves you blind. A kept layout is put
+back on every start and whenever a monitor is plugged in.
+
+**Weather** shows a 3-day forecast; its "radar" button swaps in the last
+hour of rain on a dark map, looping, centred on the forecast's location
+(click for the full radar in the browser).
 
 Details in [`config/quickshell/README.md`](config/quickshell/README.md).
 
@@ -244,6 +256,8 @@ still shows you which window is live. The opacity slider needs mangowc
 │   ├── keybinds          # config.conf's binds for the keybinds popup
 │   ├── procs             # /proc snapshot for the metrics card
 │   ├── sysinfo           # disks, disk activity and temperatures for it
+│   ├── displays          # wlr-randr for the Displays card: list | save | apply | forget
+│   ├── radar             # map + rain tiles for the weather card's radar
 │   ├── launcher          # opens the app grid (rofi if the bar is down)
 │   ├── power / network
 ├── quickshell/           # the bar (see its README)

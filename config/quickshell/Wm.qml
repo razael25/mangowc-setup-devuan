@@ -18,6 +18,7 @@ Singleton {
     property int tagCount: 9
     property string title: ""
     property string monitor: ""     // focused output name (dispatch target)
+    property bool identifyOutputs: false   // Displays card: name on every screen
 
     readonly property string ipc: Theme.configDir + "/scripts/mango-ipc"
     function dispatch(cmd) { Quickshell.execDetached([ipc, "dispatch", cmd]) }

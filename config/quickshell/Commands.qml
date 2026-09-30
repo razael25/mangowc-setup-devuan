@@ -243,6 +243,10 @@ BarModule {
     }
 
     // Super+x (scripts/power) and the Power menu row below
+    DisplaysPopup {
+        id: displays
+        anchorItem: root
+    }
     PowerPopup {
         id: power
         anchorItem: root
@@ -441,6 +445,8 @@ BarModule {
                       run: () => Quickshell.execDetached(["kitty", "-e", "sh", "-c",
                           "sudo apt update && apt list --upgradable; " +
                           "printf '\\ndone - press enter to close '; read _"]) },
+                    { icon: "󰍹", label: "Displays",
+                      run: () => displays.visible = true },
                     { icon: "󰌌", label: "Keybindings",
                       run: () => keybinds.visible = true },
                     { icon: "󰑓", label: "Restart bar",
