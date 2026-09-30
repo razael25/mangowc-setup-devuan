@@ -101,6 +101,7 @@ Everything else is stock Debian:
 | `wlsunset`, `power-profiles-daemon`, `brightnessctl` | The command menu's toggles |
 | `network-manager-config-connectivity-debian` | Lets the network icon tell "no internet" and hotel/café sign-in pages from a working connection |
 | `btop`                        | The metrics card's full view         |
+| `mpd-mpris` (butterrepo, optional) | MPD users: puts MPD on the media bus so the Media module, playerctl and media keys see it (`sudo apt install mpd-mpris && systemctl --user enable --now mpd-mpris`) |
 | `qrencode`                    | The network app's Share Wi-Fi QR code |
 | `fastfetch`                   | The launcher's "About this system"   |
 
