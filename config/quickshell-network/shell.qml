@@ -97,6 +97,7 @@ ShellRoot {
             radioProc.running = true
             savedProc.running = true
             detailsProc.running = true
+            tsProc.running = true
             btShowProc.running = true
             btDevsProc.running = true
             scanning = true
@@ -259,7 +260,7 @@ ShellRoot {
             interval: 5000
             running: true
             repeat: true
-            onTriggered: detailsProc.running = true
+            onTriggered: { detailsProc.running = true; tsProc.running = true }
         }
 
         Process {
@@ -348,6 +349,76 @@ ShellRoot {
                 }
             }
         }
+
+        // --- Tailscale (when installed): a first-class VPN row, not the
+        // read-only "tailscale0" tun profile NetworkManager auto-creates.
+        // Reads need nothing; up/down/exit-node need root OR the operator
+        // grant — the first action asks (pkexec) to set that once, then
+        // every later toggle is silent.
+        property bool tsPresent: false
+        property string tsState: ""     // Running / Stopped / NeedsLogin
+        property string tsIp: ""
+        property string tsHost: ""
+        property string tsExit: ""      // hostname of the exit node in use
+        property var tsExitNodes: []    // {name, online}
+        property int tsOnline: 0
+        property string tsAuthUrl: ""
+        property bool tsPick: false     // exit-node list expanded
+        Process {
+            id: tsProc
+            command: ["sh", "-c", "command -v tailscale >/dev/null 2>&1 && tailscale status --json 2>/dev/null"]
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    if (text.trim() === "") {
+                        win.tsPresent = false
+                        return
+                    }
+                    try {
+                        const j = JSON.parse(text)
+                        win.tsPresent = true
+                        win.tsState = j.BackendState ?? ""
+                        win.tsIp = j.TailscaleIPs?.[0] ?? ""
+                        win.tsHost = j.Self?.HostName ?? ""
+                        win.tsAuthUrl = j.AuthURL ?? ""
+                        const peers = Object.values(j.Peer ?? {})
+                        win.tsOnline = peers.filter(p => p.Online).length
+                        win.tsExitNodes = peers.filter(p => p.ExitNodeOption)
+                            .map(p => ({ name: p.HostName, online: !!p.Online }))
+                            .sort((a, b) => (b.online - a.online) || a.name.localeCompare(b.name))
+                        const ex = peers.find(p => p.ExitNode)
+                        win.tsExit = ex ? ex.HostName : ""
+                    } catch (e) {
+                        win.tsPresent = false
+                    }
+                }
+            }
+        }
+        // run a tailscale command as this user; on "Access denied" grant the
+        // operator role once (pkexec asks) and retry
+        function tsRun(args, msg) {
+            run(["sh", "-c",
+                 'err=$(tailscale "$@" 2>&1) && exit 0; ' +
+                 'case "$err" in *"Access denied"*) ' +
+                 '  pkexec tailscale set --operator="$USER" && exec tailscale "$@" ;; esac; ' +
+                 'printf "%s\\n" "$err" >&2; exit 1', "sh"].concat(args), msg)
+        }
+        // not logged in: get the login URL from `tailscale up` and open it
+        function tsLogin() {
+            if (tsAuthUrl !== "") {
+                Quickshell.execDetached(["xdg-open", tsAuthUrl])
+                return
+            }
+            run(["sh", "-c",
+                 'out=$(timeout 20 tailscale up 2>&1); ' +
+                 'case "$out" in *"Access denied"*) ' +
+                 '  pkexec tailscale set --operator="$USER" || exit 1; out=$(timeout 20 tailscale up 2>&1) ;; esac; ' +
+                 'url=$(printf "%s" "$out" | grep -o "https://login[^[:space:]]*" | head -1); ' +
+                 '[ -n "$url" ] && { xdg-open "$url"; exit 0; }; ' +
+                 'printf "%s\\n" "$out" >&2; exit 1'], "opening tailscale login…")
+        }
+        // the NM rows, minus tailscale's own tun profile when tailscale
+        // itself is shown
+        readonly property var vpnRows: vpns.filter(v => !(tsPresent && /^tailscale/.test(v.name)))
 
         property var _nets: []
         Process {
@@ -1097,12 +1168,131 @@ ShellRoot {
 
                     // VPN connections — shield row per saved vpn/wireguard profile
                     SectionLabel {
-                        visible: win.vpns.length > 0
+                        visible: win.tsPresent || win.vpnRows.length > 0
                         text: "VPN"
                     }
 
+                    // Tailscale: name · state, toggle; exit-node picker below
+                    // when the tailnet offers any
+                    Item {
+                        visible: win.tsPresent
+                        width: parent.width
+                        height: 30
+
+                        Text {
+                            id: tsName
+                            anchors.left: parent.left
+                            anchors.leftMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "󰦝  Tailscale"
+                            color: win.tsState === "Running" ? Theme.green : Theme.fg
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                        }
+                        Text {
+                            anchors.left: tsName.right
+                            anchors.leftMargin: 12
+                            anchors.right: tsToggle.left
+                            anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: win.tsState === "Running"
+                                ? win.tsIp + " · " + win.tsOnline + " online"
+                                  + (win.tsExit !== "" ? " · exit " + win.tsExit : "")
+                                  + (win.rateText("tailscale0") !== "" ? "  " + win.rateText("tailscale0") : "")
+                                : win.tsState === "NeedsLogin" ? "not logged in — click to log in"
+                                : "off"
+                            color: win.tsState === "NeedsLogin" ? Theme.accent : Theme.disabled
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                            elide: Text.ElideRight
+                        }
+                        Toggle {
+                            id: tsToggle
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            on: win.tsState === "Running"
+                            onColor: Theme.green
+                            onToggled: win.tsState === "NeedsLogin" ? win.tsLogin()
+                                : win.tsState === "Running" ? win.tsRun(["down"], "tailscale down…")
+                                : win.tsRun(["up"], "tailscale up…")
+                        }
+                    }
+
+                    Item {
+                        visible: win.tsPresent && win.tsState === "Running" && win.tsExitNodes.length > 0
+                        width: parent.width
+                        height: 28
+
+                        Text {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 26
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "exit node"
+                            color: Qt.alpha(Theme.fg, 0.6)
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                        }
+                        SmallButton {
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: (win.tsExit !== "" ? win.tsExit : "none") + (win.tsPick ? "  󰅃" : "  󰅀")
+                            onClicked: win.tsPick = !win.tsPick
+                        }
+                    }
+
                     Repeater {
-                        model: win.vpns
+                        model: win.tsPresent && win.tsState === "Running" && win.tsPick
+                            ? [{ name: "", online: true }].concat(win.tsExitNodes) : []
+
+                        Rectangle {
+                            id: exitRow
+                            required property var modelData
+                            readonly property bool current: exitRow.modelData.name === win.tsExit
+                            width: parent.width
+                            height: 28
+                            radius: 8
+                            color: current ? Qt.alpha(Theme.accent, 0.2)
+                                 : exitMa.containsMouse ? Qt.alpha(Theme.fg, 0.08) : "transparent"
+
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 26
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: exitRow.modelData.name === "" ? "none" : exitRow.modelData.name
+                                color: !exitRow.modelData.online ? Theme.disabled
+                                     : exitRow.current ? Theme.accent : Theme.fg
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 12
+                                font.bold: exitRow.current
+                            }
+                            Text {
+                                visible: !exitRow.modelData.online
+                                anchors.right: parent.right
+                                anchors.rightMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "offline"
+                                color: Theme.disabled
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+                            MouseArea {
+                                id: exitMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                enabled: exitRow.modelData.online && !exitRow.current
+                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                onClicked: {
+                                    win.tsPick = false
+                                    win.tsRun(["set", "--exit-node=" + exitRow.modelData.name],
+                                              exitRow.modelData.name === "" ? "clearing exit node…"
+                                              : "exit via " + exitRow.modelData.name + "…")
+                                }
+                            }
+                        }
+                    }
+
+                    Repeater {
+                        model: win.vpnRows
 
                         Item {
                             id: vpnRow
