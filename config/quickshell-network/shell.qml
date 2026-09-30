@@ -598,20 +598,27 @@ ShellRoot {
 
         // "Device <mac> <name…>" lines; known = Paired + Trusted (a device
         // can be either, or both — dedupe by mac); a === marker splits
-        // known from connected so one process covers all
+        // known from connected, then "bat <mac> <pct>" for connected devices
+        // that report a battery (headsets, some mice) — one process for all
         property var _btPaired: []
         property var _btConn: []
+        property var _btBat: ({})
         property bool _btPastMark: false
         Process {
             id: btDevsProc
             command: ["sh", "-c",
                 "bluetoothctl devices Paired 2>/dev/null; " +
                 "bluetoothctl devices Trusted 2>/dev/null; echo ===; " +
-                "bluetoothctl devices Connected 2>/dev/null"]
+                "bluetoothctl devices Connected 2>/dev/null; " +
+                "for m in $(bluetoothctl devices Connected 2>/dev/null | awk '{ print $2 }'); do " +
+                "  b=$(bluetoothctl info \"$m\" 2>/dev/null | sed -n 's/.*Battery Percentage:.*(\\([0-9]*\\)).*/\\1/p'); " +
+                "  [ -n \"$b\" ] && echo \"bat $m $b\"; " +
+                "done"]
             stdout: SplitParser {
                 onRead: line => {
                     if (line.trim() === "===") { win._btPastMark = true; return }
                     const p = line.trim().split(" ")
+                    if (p[0] === "bat" && p.length === 3) { win._btBat[p[1]] = parseInt(p[2]); return }
                     if (p[0] !== "Device" || p.length < 3) return
                     const d = { mac: p[1], name: p.slice(2).join(" ") }
                     if (win._btPastMark) win._btConn.push(d.mac)
@@ -623,11 +630,13 @@ ShellRoot {
                 if (running) {
                     win._btPaired = []
                     win._btConn = []
+                    win._btBat = {}
                     win._btPastMark = false
                 } else {
                     win.btDevices = win._btPaired.map(d => ({
                         mac: d.mac, name: d.name,
-                        connected: win._btConn.indexOf(d.mac) !== -1 }))
+                        connected: win._btConn.indexOf(d.mac) !== -1,
+                        battery: win._btBat[d.mac] ?? -1 }))
                 }
             }
         }
@@ -1247,8 +1256,13 @@ ShellRoot {
                                 anchors.right: parent.right
                                 anchors.rightMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: btRow.modelData.connected ? "connected" : "paired"
-                                color: btRow.modelData.connected ? Theme.green : Theme.disabled
+                                // battery after "connected" when the device reports one
+                                text: btRow.modelData.connected
+                                    ? "connected" + (btRow.modelData.battery >= 0 ? " · " + btRow.modelData.battery + "%" : "")
+                                    : "paired"
+                                color: btRow.modelData.connected
+                                    ? (btRow.modelData.battery >= 0 && btRow.modelData.battery <= 15 ? Theme.alert : Theme.green)
+                                    : Theme.disabled
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                             }
