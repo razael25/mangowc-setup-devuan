@@ -48,13 +48,11 @@ ShellRoot {
                 color: Theme.bg
                 border.width: 2
                 border.color: Theme.accent
-                Text {
+                Txt {
                     id: ident
                     anchors.centerIn: parent
                     text: modelData.name + "\n" + modelData.width + " × " + modelData.height
                     horizontalAlignment: Text.AlignHCenter
-                    color: Theme.fg
-                    font.family: Theme.fontFamily
                     font.pixelSize: 40
                     font.bold: true
                 }

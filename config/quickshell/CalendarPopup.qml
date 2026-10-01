@@ -24,13 +24,12 @@ Popout {
             width: parent.width
             height: 28
 
-            Text {
+            Txt {
                 id: prevBtn
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
                 text: "󰅁"
                 color: Theme.accent
-                font.family: Theme.fontFamily
                 font.pixelSize: 18
                 MouseArea {
                     anchors.fill: parent
@@ -39,11 +38,9 @@ Popout {
                 }
             }
 
-            Text {
+            Txt {
                 anchors.centerIn: parent
                 text: Qt.formatDate(root.shown, "MMMM yyyy")
-                color: Theme.fg
-                font.family: Theme.fontFamily
                 font.pixelSize: 14
                 font.bold: true
                 MouseArea {
@@ -53,12 +50,11 @@ Popout {
                 }
             }
 
-            Text {
+            Txt {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 text: "󰅂"
                 color: Theme.accent
-                font.family: Theme.fontFamily
                 font.pixelSize: 18
                 MouseArea {
                     anchors.fill: parent
@@ -73,13 +69,11 @@ Popout {
             width: parent.width
             Repeater {
                 model: 7
-                Text {
+                Txt {
                     required property int index
                     width: parent.width / 7
                     text: Qt.locale().dayName((Qt.locale().firstDayOfWeek + index) % 7, Locale.ShortFormat)
                     color: Qt.alpha(Theme.fg, 0.5)
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
                     horizontalAlignment: Text.AlignHCenter
                 }
             }
@@ -120,13 +114,12 @@ Popout {
                         radius: 13
                         color: cell.isToday ? Theme.selbg : "transparent"
 
-                        Text {
+                        Txt {
                             anchors.centerIn: parent
                             text: cell.cellDate.getDate()
                             color: cell.isToday ? Theme.selfg
                                  : cell.inMonth ? Theme.fg
                                  : Qt.alpha(Theme.fg, 0.25)
-                            font.family: Theme.fontFamily
                             font.pixelSize: 12
                             font.bold: cell.isToday
                         }

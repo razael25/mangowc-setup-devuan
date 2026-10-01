@@ -29,21 +29,16 @@ Item {
     width: parent.width
     height: 36
 
-    Text {
+    Txt {
         anchors.left: parent.left
         anchors.top: parent.top
         text: ts.label
-        color: Theme.fg
-        font.family: Theme.fontFamily
-        font.pixelSize: 11
     }
-    Text {
+    Txt {
         anchors.right: parent.right
         anchors.top: parent.top
         text: ts.fmt(ts.shown) + ts.suffix
         color: Theme.accent
-        font.family: Theme.fontFamily
-        font.pixelSize: 11
         font.bold: true
     }
 

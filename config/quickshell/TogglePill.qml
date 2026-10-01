@@ -25,20 +25,18 @@ Rectangle {
         anchors.centerIn: parent
         spacing: 7
 
-        Text {
+        Txt {
             anchors.verticalCenter: parent.verticalCenter
             text: pill.modelData.icon
             color: pill.modelData.alert ? Theme.red
                  : pill.on ? Theme.selfg : Theme.cyan
-            font.family: Theme.fontFamily
             font.pixelSize: 15
             Behavior on color { ColorAnimation { duration: 250 } }
         }
-        Text {
+        Txt {
             anchors.verticalCenter: parent.verticalCenter
             text: pill.modelData.label
             color: pill.on ? Theme.selfg : Qt.alpha(Theme.fg, 0.9)
-            font.family: Theme.fontFamily
             font.pixelSize: 12
             font.bold: pill.on
         }

@@ -133,9 +133,6 @@ Singleton {
 
     property bool capsOn: false
     property bool dndOn: false
-    // Wayland popups are xdg-popups sized to their card; Popout's
-    // fullscreen click-catcher mode (for bare X11) is never wanted here
-    readonly property bool composited: false
 
     // caps lock: the keyboards' LED files (no X server to ask on
     // Wayland), one reader per LED, any lit one counts

@@ -93,15 +93,6 @@ BarModule {
         Quickshell.execDetached(["bluetoothctl", "power", root.btOn ? "on" : "off"])
     }
 
-    // the bar's section heading (LayoutPicker's)
-    component SectionLabel: Text {
-        color: Theme.accent
-        font.family: Theme.fontFamily
-        font.pixelSize: 12
-        font.bold: true
-        topPadding: 6
-    }
-
     function cycleProfile() {
         const next = profileOrder[(profileOrder.indexOf(profile) + 1) % profileOrder.length]
         Quickshell.execDetached(["powerprofilesctl", "set", next])
@@ -209,18 +200,16 @@ BarModule {
             anchors.leftMargin: 10
             spacing: 10
 
-            Text {
+            Txt {
                 anchors.verticalCenter: parent.verticalCenter
                 text: rowRect.modelData.icon
                 color: Theme.cyan
-                font.family: Theme.fontFamily
                 font.pixelSize: 15
             }
-            Text {
+            Txt {
                 anchors.verticalCenter: parent.verticalCenter
                 text: rowRect.modelData.label
                 color: Qt.alpha(Theme.fg, 0.9)
-                font.family: Theme.fontFamily
                 font.pixelSize: 13
             }
         }
@@ -299,7 +288,7 @@ BarModule {
                     width: parent.width
                     height: more !== "" ? 36 : 24
 
-                    Text {
+                    Txt {
                         id: batGlyph
                         anchors.left: parent.left
                         anchors.leftMargin: 10
@@ -308,7 +297,6 @@ BarModule {
                         horizontalAlignment: Text.AlignHCenter
                         text: Batteries.glyph(bat.modelData)
                         color: bat.low ? Theme.red : Theme.cyan
-                        font.family: Theme.fontFamily
                         font.pixelSize: 15
                     }
                     Column {
@@ -318,25 +306,23 @@ BarModule {
                         anchors.rightMargin: 8
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 1
-                        Text {
+                        Txt {
                             width: parent.width
                             text: bat.modelData.name
                             color: Qt.alpha(Theme.fg, 0.9)
-                            font.family: Theme.fontFamily
                             font.pixelSize: 12
                             elide: Text.ElideRight
                         }
-                        Text {
+                        Txt {
                             visible: bat.more !== ""
                             width: parent.width
                             text: bat.more
                             color: Qt.alpha(Theme.fg, 0.5)
-                            font.family: Theme.fontFamily
                             font.pixelSize: 10
                             elide: Text.ElideRight
                         }
                     }
-                    Text {
+                    Txt {
                         id: batCharge
                         anchors.right: parent.right
                         anchors.rightMargin: 10
@@ -345,7 +331,6 @@ BarModule {
                         color: bat.low ? Theme.red
                              : bat.modelData.pct < 0 && bat.modelData.level === "unknown" ? Qt.alpha(Theme.fg, 0.4)
                              : Theme.fg
-                        font.family: Theme.fontFamily
                         font.pixelSize: 12
                         font.bold: bat.low
                     }

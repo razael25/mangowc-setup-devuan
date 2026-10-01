@@ -37,14 +37,6 @@ Popout {
             "printf '%s\\n' " + v + " > '" + Theme.configDir + "/" + name + "'"])
     }
 
-    component SectionLabel: Text {
-        color: Theme.accent
-        font.family: Theme.fontFamily
-        font.pixelSize: 12
-        font.bold: true
-        topPadding: 6
-    }
-
     Column {
         id: col
         anchors.left: parent.left
@@ -81,18 +73,16 @@ Popout {
                         anchors.centerIn: parent
                         spacing: 2
 
-                        Text {
+                        Txt {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: tile.modelData.glyph
                             color: tile.current ? Theme.selfg : Theme.cyan
-                            font.family: Theme.fontFamily
                             font.pixelSize: 18
                         }
-                        Text {
+                        Txt {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: tile.modelData.name
                             color: tile.current ? Theme.selfg : Qt.alpha(Theme.fg, 0.8)
-                            font.family: Theme.fontFamily
                             font.pixelSize: 10
                             font.bold: tile.current
                         }

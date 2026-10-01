@@ -38,7 +38,7 @@ Rectangle {
         }
     }
 
-    Text {
+    Txt {
         id: glyph
         anchors.left: parent.left
         anchors.leftMargin: 12
@@ -47,7 +47,6 @@ Rectangle {
         horizontalAlignment: Text.AlignHCenter
         text: tile.modelData.icon
         color: tile.alert || tile.on ? Theme.bg : Theme.cyan
-        font.family: Theme.fontFamily
         font.pixelSize: 16
         Behavior on color { ColorAnimation { duration: 150 } }
     }
@@ -60,11 +59,10 @@ Rectangle {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 1
 
-        Text {
+        Txt {
             width: parent.width
             text: tile.modelData.name
             color: tile.ink
-            font.family: Theme.fontFamily
             font.pixelSize: 12
             font.bold: true
             elide: Text.ElideRight
@@ -74,12 +72,10 @@ Rectangle {
         Row {
             spacing: 6
 
-            Text {
+            Txt {
                 anchors.verticalCenter: parent.verticalCenter
                 text: tile.modelData.state
                 color: Qt.alpha(tile.ink, 0.7)
-                font.family: Theme.fontFamily
-                font.pixelSize: 11
             }
 
             Repeater {
@@ -94,11 +90,10 @@ Rectangle {
                     radius: 4
                     color: adjMa.containsMouse ? Qt.alpha(tile.ink, 0.2) : Qt.alpha(tile.ink, 0.08)
 
-                    Text {
+                    Txt {
                         anchors.centerIn: parent
                         text: adj.modelData < 0 ? "−" : "+"
                         color: tile.ink
-                        font.family: Theme.fontFamily
                         font.pixelSize: 12
                         font.bold: true
                     }

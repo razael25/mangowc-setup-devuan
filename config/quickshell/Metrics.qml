@@ -21,11 +21,10 @@ BarModule {
     }
 
     // dim dot — keeps "RAM 15% / 19%" from scanning as a fraction
-    component Sep: Text {
+    component Sep: Txt {
         anchors.verticalCenter: parent.verticalCenter
         text: "·"
         color: Qt.alpha(Theme.fg, 0.3)
-        font.family: Theme.fontFamily
         font.pixelSize: Theme.fontSize
     }
 
@@ -38,29 +37,26 @@ BarModule {
         spacing: Math.round(5 * Theme.barScale)
         anchors.verticalCenter: parent.verticalCenter
 
-        Text {
+        Txt {
             visible: parent.icon !== ""
             anchors.verticalCenter: parent.verticalCenter
             text: parent.icon
             color: parent.tagColor
-            font.family: Theme.fontFamily
             font.pixelSize: Theme.iconSize
             Behavior on color { ColorAnimation { duration: 250 } }
         }
-        Text {
+        Txt {
             visible: parent.tag !== ""
             anchors.verticalCenter: parent.verticalCenter
             text: parent.tag
             color: parent.tagColor
-            font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSize
             Behavior on color { ColorAnimation { duration: 250 } }
         }
-        Text {
+        Txt {
             anchors.verticalCenter: parent.verticalCenter
             text: parent.value
             color: parent.valueColor
-            font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSize
             Behavior on color { ColorAnimation { duration: 250 } }
         }

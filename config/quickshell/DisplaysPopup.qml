@@ -278,13 +278,11 @@ Popout {
         color: active ? Theme.accent
              : pillMa.containsMouse ? Qt.alpha(Theme.fg, 0.14) : Qt.alpha(Theme.fg, 0.06)
         Behavior on color { ColorAnimation { duration: 120 } }
-        Text {
+        Txt {
             id: pillText
             anchors.centerIn: parent
             text: label + (star ? " ★" : "")
             color: active ? Theme.bg : Qt.alpha(Theme.fg, 0.85)
-            font.family: Theme.fontFamily
-            font.pixelSize: 11
             font.bold: active
         }
         MouseArea {
@@ -295,32 +293,8 @@ Popout {
             onClicked: parent.clicked()
         }
     }
-    component Toggle: Rectangle {
-        property bool on: false
-        signal toggled()
-        width: 38
-        height: 20
-        radius: 10
-        color: on ? Theme.accent : Qt.alpha(Theme.fg, 0.15)
-        opacity: enabled ? 1 : 0.4
-        Behavior on color { ColorAnimation { duration: 150 } }
-        Rectangle {
-            x: parent.on ? parent.width - width - 3 : 3
-            anchors.verticalCenter: parent.verticalCenter
-            width: 14; height: 14; radius: 7
-            color: parent.on ? Theme.bg : Qt.alpha(Theme.fg, 0.7)
-            Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-        }
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: parent.toggled()
-        }
-    }
-    component Label: Text {
+    component Label: Txt {
         color: Qt.alpha(Theme.fg, 0.6)
-        font.family: Theme.fontFamily
-        font.pixelSize: 11
     }
     // "Resolution      3440 × 1440 ▾" — click to expand its pills below
     component PickRow: Item {
@@ -391,19 +365,17 @@ Popout {
                     anchors.margins: 10
                     anchors.centerIn: mon.roomy ? undefined : parent
                     spacing: 2
-                    Text {
+                    Txt {
                         text: mon.modelData.name
                         color: mon.selected ? Theme.accent : Theme.fg
-                        font.family: Theme.fontFamily
                         font.pixelSize: 13
                         font.bold: true
                     }
-                    Text {
+                    Txt {
                         visible: mon.roomy
                         width: mon.width - 20
                         text: mon.modelData.desc + (mon.modelData.inches ? " " + mon.modelData.inches + "\"" : "")
                         color: Qt.alpha(Theme.fg, 0.6)
-                        font.family: Theme.fontFamily
                         font.pixelSize: 10
                         elide: Text.ElideRight
                     }
@@ -414,17 +386,15 @@ Popout {
                     anchors.bottom: parent.bottom
                     anchors.margins: 10
                     spacing: 1
-                    Text {
+                    Txt {
                         text: mon.modelData.w + "×" + mon.modelData.h + " @ " + mon.modelData.r + " Hz"
                         color: Qt.alpha(Theme.fg, 0.7)
-                        font.family: Theme.fontFamily
                         font.pixelSize: 10
                     }
-                    Text {
+                    Txt {
                         text: "scale " + mon.modelData.scale + "  ·  at " + mon.modelData.x + "," + mon.modelData.y
                               + (mon.modelData.transform !== "normal" ? "  ·  " + mon.modelData.transform + "°" : "")
                         color: Qt.alpha(Theme.fg, 0.5)
-                        font.family: Theme.fontFamily
                         font.pixelSize: 10
                     }
                 }
@@ -493,19 +463,17 @@ Popout {
                 required property var modelData
                 width: (hardware.width - hardware.columnSpacing) / 2
                 spacing: 8
-                Text {
+                Txt {
                     width: 88
                     text: parent.modelData[0]
                     color: Qt.alpha(Theme.fg, 0.45)
-                    font.family: Theme.fontFamily
                     font.pixelSize: 10
                     elide: Text.ElideRight
                 }
-                Text {
+                Txt {
                     width: parent.width - 96
                     text: parent.modelData[1]
                     color: Qt.alpha(Theme.fg, 0.8)
-                    font.family: Theme.fontFamily
                     font.pixelSize: 10
                     elide: Text.ElideRight
                 }
@@ -526,20 +494,17 @@ Popout {
         visible: root.cur !== null
         clip: true
 
-        Text {
+        Txt {
             width: parent.width
             text: root.cur ? root.cur.desc : ""
-            color: Theme.fg
-            font.family: Theme.fontFamily
             font.pixelSize: 13
             font.bold: true
             elide: Text.ElideRight
         }
-        Text {
+        Txt {
             width: parent.width
             text: root.cur ? root.cur.name + "  ·  " + root.cur.w + " × " + root.cur.h + " @ " + root.cur.r + " Hz" : ""
             color: Qt.alpha(Theme.fg, 0.5)
-            font.family: Theme.fontFamily
             font.pixelSize: 10
             elide: Text.ElideRight
         }
@@ -650,7 +615,7 @@ Popout {
         anchors.bottom: parent.bottom
         height: 48
 
-        Text {
+        Txt {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
@@ -659,8 +624,6 @@ Popout {
             color: root.keepLeft > 0 ? Theme.fg
                  : root.status !== "" && root.status !== "reverted" && !root.status.startsWith("kept") ? Theme.red
                  : Qt.alpha(Theme.fg, 0.5)
-            font.family: Theme.fontFamily
-            font.pixelSize: 11
             elide: Text.ElideRight
         }
 

@@ -89,23 +89,20 @@ Popout {
         anchors.top: parent.top
         height: 22
 
-        Text {
+        Txt {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "Notifications"
             color: Theme.accent
-            font.family: Theme.fontFamily
             font.pixelSize: 12
             font.bold: true
         }
-        Text {
+        Txt {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             visible: root.notifs.length > 0
             text: "clear all"
             color: clearMa.containsMouse ? Theme.fg : Qt.alpha(Theme.fg, 0.5)
-            font.family: Theme.fontFamily
-            font.pixelSize: 11
             MouseArea {
                 id: clearMa
                 anchors.fill: parent
@@ -134,12 +131,10 @@ Popout {
             width: parent.width
             spacing: 6
 
-            Text {
+            Txt {
                 visible: root.notifs.length === 0
                 text: "nothing missed"
                 color: Qt.alpha(Theme.fg, 0.35)
-                font.family: Theme.fontFamily
-                font.pixelSize: 11
                 topPadding: 6
             }
 
@@ -180,14 +175,11 @@ Popout {
                             width: parent.width
                             height: 14
 
-                            Text {
+                            Txt {
                                 anchors.left: parent.left
                                 anchors.right: meta.left
                                 anchors.rightMargin: 6
                                 text: ncard.modelData.summary
-                                color: Theme.fg
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
                                 font.bold: true
                                 elide: Text.ElideRight
                             }
@@ -196,18 +188,15 @@ Popout {
                                 anchors.right: parent.right
                                 spacing: 8
 
-                                Text {
+                                Txt {
                                     text: ncard.modelData.app + " · " + root.age(ncard.modelData.ts)
                                     color: Qt.alpha(Theme.fg, 0.4)
-                                    font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                 }
-                                Text {
+                                Txt {
                                     visible: cardMa.containsMouse
                                     text: "󰅖"
                                     color: disMa.containsMouse ? Theme.red : Qt.alpha(Theme.fg, 0.5)
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 11
                                     MouseArea {
                                         id: disMa
                                         anchors.fill: parent
@@ -223,13 +212,11 @@ Popout {
                             }
                         }
 
-                        Text {
+                        Txt {
                             width: parent.width
                             visible: ncard.modelData.body !== ""
                             text: ncard.modelData.body
                             color: Qt.alpha(Theme.fg, 0.65)
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
                             wrapMode: Text.Wrap
                             maximumLineCount: 2
                             elide: Text.ElideRight

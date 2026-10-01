@@ -141,14 +141,13 @@ Popout {
         border.width: 1
         border.color: search.activeFocus ? Qt.alpha(Theme.accent, 0.5) : "transparent"
 
-        Text {
+        Txt {
             id: searchIcon
             anchors.left: parent.left
             anchors.leftMargin: 12
             anchors.verticalCenter: parent.verticalCenter
             text: "󰌌"
             color: Theme.accent
-            font.family: Theme.fontFamily
             font.pixelSize: 15
         }
 
@@ -191,15 +190,13 @@ Popout {
             }
         }
 
-        Text {
+        Txt {
             id: hint
             anchors.right: parent.right
             anchors.rightMargin: 12
             anchors.verticalCenter: parent.verticalCenter
             text: "click a bind to edit it · esc to close"
             color: Qt.alpha(Theme.fg, 0.35)
-            font.family: Theme.fontFamily
-            font.pixelSize: 11
         }
     }
 
@@ -221,11 +218,10 @@ Popout {
             contentY = Math.max(0, Math.min(contentY, contentHeight - height))
         }
 
-        Text {
+        Txt {
             visible: root.query !== "" && root.columns.every(c => c.length === 0)
             text: "No keybinds match \"" + root.query + "\""
             color: Qt.alpha(Theme.fg, 0.5)
-            font.family: Theme.fontFamily
             font.pixelSize: 12
         }
 
@@ -251,13 +247,11 @@ Popout {
                             width: parent.width
                             spacing: 1
 
-                            Text {
+                            Txt {
                                 leftPadding: 6
                                 bottomPadding: 4
                                 text: section.modelData.title
                                 color: Theme.accent
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
                                 font.bold: true
                                 font.capitalization: Font.AllUppercase
                                 font.letterSpacing: 1
@@ -296,19 +290,17 @@ Popout {
                                                 border.width: modelData.cap ? 1 : 0
                                                 border.color: Qt.alpha(Theme.fg, 0.16)
 
-                                                Text {
+                                                Txt {
                                                     id: capText
                                                     anchors.centerIn: parent
                                                     text: cap.modelData.t
                                                     color: cap.modelData.cap ? Theme.fg : Qt.alpha(Theme.fg, 0.4)
-                                                    font.family: Theme.fontFamily
-                                                    font.pixelSize: 11
                                                 }
                                             }
                                         }
                                     }
 
-                                    Text {
+                                    Txt {
                                         id: label
                                         x: keycaps.x + root.keysWidth + 10
                                         y: 4 + 2
@@ -316,12 +308,11 @@ Popout {
                                         text: bindRow.modelData.desc
                                         wrapMode: Text.Wrap
                                         color: Qt.alpha(Theme.fg, 0.9)
-                                        font.family: Theme.fontFamily
                                         font.pixelSize: 12
                                     }
 
                                     // where it lives, shown on hover
-                                    Text {
+                                    Txt {
                                         id: lineNo
                                         anchors.right: parent.right
                                         anchors.rightMargin: 6
@@ -329,7 +320,6 @@ Popout {
                                         text: "L" + bindRow.modelData.line
                                         opacity: rowMa.containsMouse ? 1 : 0
                                         color: Qt.alpha(Theme.fg, 0.4)
-                                        font.family: Theme.fontFamily
                                         font.pixelSize: 10
                                     }
 

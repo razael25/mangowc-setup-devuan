@@ -125,7 +125,7 @@ Popout {
                     anchors.leftMargin: 12
                     spacing: 12
 
-                    Text {
+                    Txt {
                         anchors.verticalCenter: parent.verticalCenter
                         // fixed column: the glyphs differ in width
                         width: 18
@@ -133,14 +133,12 @@ Popout {
                         text: row.modelData.icon
                         color: row.armed ? Theme.bg
                              : row.modelData.confirm ? Theme.red : Theme.cyan
-                        font.family: Theme.fontFamily
                         font.pixelSize: 16
                     }
-                    Text {
+                    Txt {
                         anchors.verticalCenter: parent.verticalCenter
                         text: row.armed ? row.modelData.confirm : row.modelData.label
                         color: row.armed ? Theme.bg : Qt.alpha(Theme.fg, 0.9)
-                        font.family: Theme.fontFamily
                         font.pixelSize: 13
                         font.bold: row.armed
                     }
@@ -158,13 +156,11 @@ Popout {
                     border.width: row.armed ? 0 : 1
                     border.color: Qt.alpha(Theme.fg, 0.16)
 
-                    Text {
+                    Txt {
                         id: hintText
                         anchors.centerIn: parent
                         text: row.armed ? "again to confirm" : row.modelData.key.toUpperCase()
                         color: row.armed ? Theme.bg : Qt.alpha(Theme.fg, 0.7)
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
                     }
                 }
 

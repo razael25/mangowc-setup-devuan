@@ -39,3 +39,6 @@ LauncherPopup LauncherPopup.qml
 QuickTile QuickTile.qml
 RadarView RadarView.qml
 DisplaysPopup DisplaysPopup.qml
+Txt Txt.qml
+SectionLabel SectionLabel.qml
+Toggle Toggle.qml

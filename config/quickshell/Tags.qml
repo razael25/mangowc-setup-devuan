@@ -45,14 +45,13 @@ Item {
                     NumberAnimation { to: 1.0; duration: 500; easing.type: Easing.InOutQuad }
                 }
 
-                Text {
+                Txt {
                     anchors.centerIn: parent
                     visible: tag.occupied || tag.selected
                     text: tag.index + 1
                     color: tag.urgent ? Theme.bg
                          : tag.selected ? Theme.selfg
                          : Qt.alpha(Theme.fg, 0.85)
-                    font.family: Theme.fontFamily
                     font.pixelSize: Math.round(12 * Theme.barScale)
                     font.bold: tag.selected
                     Behavior on color { ColorAnimation { duration: 180 } }

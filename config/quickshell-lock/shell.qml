@@ -94,21 +94,18 @@ ShellRoot {
                 anchors.centerIn: parent
                 spacing: 6
 
-                Text {
+                Txt {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: Qt.formatTime(root.now, "h:mm AP")
-                    color: Theme.fg
-                    font.family: Theme.fontFamily
                     font.pixelSize: 84
                     font.bold: true
                     style: Text.Outline
                     styleColor: Qt.alpha(Theme.bg, 0.6)
                 }
-                Text {
+                Txt {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: Qt.formatDate(root.now, "dddd, MMMM d")
                     color: Qt.alpha(Theme.fg, 0.8)
-                    font.family: Theme.fontFamily
                     font.pixelSize: 16
                     style: Text.Outline
                     styleColor: Qt.alpha(Theme.bg, 0.6)
@@ -141,14 +138,13 @@ ShellRoot {
                         NumberAnimation { target: box; property: "shake"; to: 0; duration: 50 }
                     }
 
-                    Text {
+                    Txt {
                         id: glyph
                         anchors.left: parent.left
                         anchors.leftMargin: 14
                         anchors.verticalCenter: parent.verticalCenter
                         text: root.checking ? "󰔟" : root.wrong ? "󰍁" : "󰌾"
                         color: root.wrong ? Theme.alert : Theme.accent
-                        font.family: Theme.fontFamily
                         font.pixelSize: 16
                     }
 
@@ -193,39 +189,36 @@ ShellRoot {
                     Component.onCompleted: field.forceActiveFocus()
                 }
 
-                Text {
+                Txt {
                     anchors.horizontalCenter: parent.horizontalCenter
                     height: 20
                     verticalAlignment: Text.AlignBottom
                     text: root.wrong ? "wrong password" : ""
                     color: Theme.alert
-                    font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
             }
 
             // who's locked out
-            Text {
+            Txt {
                 anchors.left: parent.left
                 anchors.bottom: parent.bottom
                 anchors.margins: 24
                 text: "󰌾  " + Quickshell.env("USER")
                 color: Qt.alpha(Theme.fg, 0.5)
-                font.family: Theme.fontFamily
                 font.pixelSize: 13
                 style: Text.Outline
                 styleColor: Qt.alpha(Theme.bg, 0.6)
             }
 
             // and on Butterbian, whose desk this is (scripts/lock sets it)
-            Text {
+            Txt {
                 visible: Quickshell.env("LOCK_BRAND") === "butterbian"
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 anchors.margins: 24
                 text: "butterbian"
                 color: Qt.alpha(Theme.accent, 0.8)
-                font.family: Theme.fontFamily
                 font.pixelSize: 15
                 font.bold: true
                 font.letterSpacing: 2

@@ -316,14 +316,13 @@ Popout {
             border.width: 1
             border.color: field.activeFocus ? Qt.alpha(Theme.accent, 0.5) : "transparent"
 
-            Text {
+            Txt {
                 id: searchIcon
                 anchors.left: parent.left
                 anchors.leftMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
                 text: ""
                 color: Theme.accent
-                font.family: Theme.fontFamily
                 font.pixelSize: 14
             }
 
@@ -399,13 +398,11 @@ Popout {
 
                     Behavior on color { ColorAnimation { duration: 120 } }
 
-                    Text {
+                    Txt {
                         id: chipText
                         anchors.centerIn: parent
                         text: chipItem.modelData
                         color: chipItem.active ? Theme.bg : Qt.alpha(Theme.fg, 0.8)
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
                         font.bold: chipItem.active
                     }
 
@@ -451,14 +448,13 @@ Popout {
             visible: !blank
 
             // the group's label, over its first row
-            Text {
+            Txt {
                 visible: !!cell.modelData.section
                 x: 6
                 y: 2
                 width: root.columns * root.cellW - 12
                 text: cell.modelData.section ?? ""
                 color: Qt.alpha(Theme.fg, 0.45)
-                font.family: Theme.fontFamily
                 font.pixelSize: 10
                 font.bold: true
                 font.letterSpacing: 1
@@ -503,16 +499,15 @@ Popout {
                 border.width: 1
                 border.color: Qt.alpha(ink, 0.35)
 
-                Text {
+                Txt {
                     anchors.centerIn: parent
                     text: cell.modelData.glyph ?? ""
                     color: parent.ink
-                    font.family: Theme.fontFamily
                     font.pixelSize: 22
                 }
             }
 
-            Text {
+            Txt {
                 anchors.top: icon.bottom
                 anchors.topMargin: 8
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -523,8 +518,6 @@ Popout {
                 elide: Text.ElideRight
                 text: cell.modelData.name
                 color: cell.current ? Theme.accent : Qt.alpha(Theme.fg, 0.85)
-                font.family: Theme.fontFamily
-                font.pixelSize: 11
             }
 
             MouseArea {
@@ -536,12 +529,11 @@ Popout {
             }
         }
 
-        Text {
+        Txt {
             anchors.centerIn: parent
             visible: root.results.length === 0
             text: root.apps.length === 0 ? "loading apps…" : "No apps match \"" + root.query + "\""
             color: Qt.alpha(Theme.fg, 0.5)
-            font.family: Theme.fontFamily
             font.pixelSize: 12
         }
     }
@@ -558,14 +550,13 @@ Popout {
         color: Qt.alpha(Theme.fg, 0.3)
     }
 
-    Text {
+    Txt {
         id: footer
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         text: "↵ open · arrows move · ctrl+tab " + root.chips[(root.chip + 1) % root.chips.length].toLowerCase()
             + " · esc close"
         color: Qt.alpha(Theme.fg, 0.35)
-        font.family: Theme.fontFamily
         font.pixelSize: 10
     }
 }

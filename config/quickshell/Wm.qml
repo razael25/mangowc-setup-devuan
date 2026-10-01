@@ -56,8 +56,6 @@ Singleton {
     property int gaps: 5
     property int mfact: 55
     property int nmaster: 1
-    property bool follow: false     // no follow toggle on mango; kept for parity
-    function toggleFollow() {}
 
     // effects: blur / shadows / animations toggles, plus border width and
     // unfocused-window opacity sliders, all set live by the picker

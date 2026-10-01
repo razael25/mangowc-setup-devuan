@@ -75,14 +75,6 @@ Popout {
         return a ? Math.round(a.volume * 100) : 0
     }
 
-    component SectionLabel: Text {
-        color: Theme.accent
-        font.family: Theme.fontFamily
-        font.pixelSize: 12
-        font.bold: true
-        topPadding: 6
-    }
-
     // mute pill: soft like the bar's pills, red while muted
     component MutePill: Rectangle {
         property bool muted: false
@@ -96,20 +88,17 @@ Popout {
         Row {
             anchors.centerIn: parent
             spacing: 6
-            Text {
+            Txt {
                 anchors.verticalCenter: parent.verticalCenter
                 text: parent.parent.muted ? "󰖁" : "󰕾"
                 color: parent.parent.muted ? Theme.bg : Theme.cyan
-                font.family: Theme.fontFamily
                 font.pixelSize: 13
             }
-            Text {
+            Txt {
                 id: muteText
                 anchors.verticalCenter: parent.verticalCenter
                 text: parent.parent.muted ? "muted" : "mute"
                 color: parent.parent.muted ? Theme.bg : Theme.fg
-                font.family: Theme.fontFamily
-                font.pixelSize: 11
                 font.bold: parent.parent.muted
             }
         }
@@ -139,7 +128,7 @@ Popout {
 
         Behavior on color { ColorAnimation { duration: 120 } }
 
-        Text {
+        Txt {
             id: devGlyph
             anchors.left: parent.left
             anchors.leftMargin: 10
@@ -148,10 +137,9 @@ Popout {
             horizontalAlignment: Text.AlignHCenter
             text: dev.active ? "󰄬" : dev.glyph
             color: dev.active ? Theme.accent : Theme.cyan
-            font.family: Theme.fontFamily
             font.pixelSize: 14
         }
-        Text {
+        Txt {
             anchors.left: devGlyph.right
             anchors.leftMargin: 10
             anchors.right: parent.right
@@ -160,7 +148,6 @@ Popout {
             text: root.label(dev.modelData)
             elide: Text.ElideRight
             color: dev.active ? Theme.fg : Qt.alpha(Theme.fg, 0.9)
-            font.family: Theme.fontFamily
             font.pixelSize: 12
             font.bold: dev.active
         }
@@ -194,13 +181,12 @@ Popout {
                 radius: 8
                 color: Qt.alpha(Theme.fg, 0.06)
 
-                Text {
+                Txt {
                     anchors.centerIn: parent
                     text: root.audio?.muted ? "󰝟"
                         : root.pct(root.audio) < 25 ? "󰕿"
                         : root.pct(root.audio) < 65 ? "󰖀" : "󰕾"
                     color: root.audio?.muted ? Qt.alpha(Theme.fg, 0.45) : Theme.green
-                    font.family: Theme.fontFamily
                     font.pixelSize: 22
                 }
             }
@@ -213,20 +199,16 @@ Popout {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 3
 
-                Text {
+                Txt {
                     text: "Volume"
-                    color: Theme.fg
-                    font.family: Theme.fontFamily
                     font.pixelSize: 13
                     font.bold: true
                 }
-                Text {
+                Txt {
                     width: parent.width
                     text: (root.current ? root.label(root.current) : "no output")
                         + " · " + (root.audio?.muted ? "muted" : root.pct(root.audio) + "%")
                     color: Qt.alpha(Theme.fg, 0.55)
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
                     elide: Text.ElideRight
                 }
             }
@@ -265,11 +247,10 @@ Popout {
             }
         }
 
-        Text {
+        Txt {
             visible: root.sinks.length === 0
             text: "no outputs"
             color: Qt.alpha(Theme.fg, 0.5)
-            font.family: Theme.fontFamily
             font.pixelSize: 12
             leftPadding: 10
         }
@@ -382,18 +363,16 @@ Popout {
                 anchors.leftMargin: 10
                 spacing: 10
 
-                Text {
+                Txt {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "󰕾"
                     color: Theme.cyan
-                    font.family: Theme.fontFamily
                     font.pixelSize: 15
                 }
-                Text {
+                Txt {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Mixer (pavucontrol)"
                     color: Qt.alpha(Theme.fg, 0.9)
-                    font.family: Theme.fontFamily
                     font.pixelSize: 13
                 }
             }

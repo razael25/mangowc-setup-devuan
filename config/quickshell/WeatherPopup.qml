@@ -93,12 +93,11 @@ Popout {
 
         Behavior on color { ColorAnimation { duration: 120 } }
 
-        Text {
+        Txt {
             id: radarText
             anchors.centerIn: parent
             text: root.radar ? "󰖎  forecast" : "󰖎  radar"
             color: root.radar ? Theme.bg : Qt.alpha(Theme.fg, 0.8)
-            font.family: Theme.fontFamily
             font.pixelSize: 10
         }
         MouseArea {
@@ -110,7 +109,7 @@ Popout {
         }
     }
 
-    Text {
+    Txt {
         id: placeLine
         anchors.left: parent.left
         anchors.right: radarBtn.visible ? radarBtn.left : parent.right
@@ -121,13 +120,12 @@ Popout {
             ? "󰅙 couldn't get the weather" + (root.location !== "" ? " for \"" + root.location + "\"" : "")
             : "󰍎 " + root.place
         color: root.failed ? Theme.red : Qt.alpha(Theme.fg, 0.5)
-        font.family: Theme.fontFamily
         font.pixelSize: 10
         elide: Text.ElideRight
     }
 
     // current condition · feels like · wind
-    Text {
+    Txt {
         id: header
         anchors.left: parent.left
         anchors.right: parent.right
@@ -136,8 +134,6 @@ Popout {
         text: root.condition
             + (root.feels !== "" ? "  ·  feels " + root.feels + "°" : "")
             + (root.wind !== "" ? "  ·  󰖝 " + root.wind : "")
-        color: Theme.fg
-        font.family: Theme.fontFamily
         font.pixelSize: 12
         font.bold: true
         elide: Text.ElideRight
@@ -173,33 +169,27 @@ Popout {
                 width: parent.width / Math.max(root.days.length, 1)
                 spacing: 5
 
-                Text {
+                Txt {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: day.modelData.label
                     color: Qt.alpha(Theme.fg, 0.55)
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
                 }
-                Text {
+                Txt {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: day.modelData.glyph
                     color: Theme.yellow
-                    font.family: Theme.fontFamily
                     font.pixelSize: 22
                 }
-                Text {
+                Txt {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: day.modelData.hi + "° / " + day.modelData.lo + "°"
-                    color: Theme.fg
-                    font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
-                Text {
+                Txt {
                     anchors.horizontalCenter: parent.horizontalCenter
                     visible: day.modelData.rain >= 30
                     text: "󰖌 " + day.modelData.rain + "%"
                     color: Theme.cyan
-                    font.family: Theme.fontFamily
                     font.pixelSize: 10
                 }
             }
@@ -233,14 +223,13 @@ Popout {
                 border.width: 1
                 border.color: field.activeFocus ? Qt.alpha(Theme.accent, 0.5) : "transparent"
 
-                Text {
+                Txt {
                     id: pin
                     anchors.left: parent.left
                     anchors.leftMargin: 10
                     anchors.verticalCenter: parent.verticalCenter
                     text: "󰍎"
                     color: Theme.accent
-                    font.family: Theme.fontFamily
                     font.pixelSize: 13
                 }
 
@@ -294,13 +283,11 @@ Popout {
                 radius: 8
                 color: autoMa.containsMouse ? Qt.alpha(Theme.fg, 0.14) : Qt.alpha(Theme.fg, 0.06)
 
-                Text {
+                Txt {
                     id: autoText
                     anchors.centerIn: parent
                     text: "auto"
                     color: Qt.alpha(Theme.fg, 0.8)
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
                 }
 
                 MouseArea {
@@ -340,12 +327,10 @@ Popout {
 
                     Behavior on color { ColorAnimation { duration: 120 } }
 
-                    Text {
+                    Txt {
                         anchors.centerIn: parent
                         text: seg.modelData.label
                         color: seg.active ? Theme.bg : Qt.alpha(Theme.fg, 0.8)
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
                         font.bold: seg.active
                     }
 

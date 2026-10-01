@@ -779,39 +779,6 @@ ShellRoot {
 
         // --- UI pieces ---
 
-        component Toggle: Rectangle {
-            property bool on: false
-            property color onColor: Theme.accent
-            signal toggled()
-            width: 38
-            height: 20
-            radius: 10
-            color: on ? onColor : Qt.alpha(Theme.fg, 0.15)
-            Behavior on color { ColorAnimation { duration: 150 } }
-
-            Rectangle {
-                x: parent.on ? parent.width - width - 3 : 3
-                anchors.verticalCenter: parent.verticalCenter
-                width: 14; height: 14; radius: 7
-                color: parent.on ? Theme.bg : Qt.alpha(Theme.fg, 0.7)
-                Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-            }
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: parent.toggled()
-            }
-        }
-
-        // the bar's section heading (LayoutPicker's SectionLabel)
-        component SectionLabel: Text {
-            topPadding: 6
-            color: Theme.accent
-            font.family: Theme.fontFamily
-            font.pixelSize: 12
-            font.bold: true
-        }
-
         component Divider: Rectangle {
             width: parent.width
             height: 1
@@ -832,21 +799,17 @@ ShellRoot {
                 id: btnRow
                 anchors.centerIn: parent
                 spacing: 6
-                Text {
+                Txt {
                     visible: parent.parent.glyph !== ""
                     anchors.verticalCenter: parent.verticalCenter
                     text: parent.parent.glyph
                     color: Theme.accent
-                    font.family: Theme.fontFamily
                     font.pixelSize: 13
                 }
-                Text {
+                Txt {
                     id: btnText
                     anchors.verticalCenter: parent.verticalCenter
                     text: parent.parent.label
-                    color: Theme.fg
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
                 }
             }
             MouseArea {
@@ -864,20 +827,17 @@ ShellRoot {
             property string value
             width: parent.width / 2 - 8
             height: 20
-            Text {
+            Txt {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
                 text: parent.label
                 color: Qt.alpha(Theme.fg, 0.5)
-                font.family: Theme.fontFamily
                 font.pixelSize: 12
             }
-            Text {
+            Txt {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 text: parent.value
-                color: Theme.fg
-                font.family: Theme.fontFamily
                 font.pixelSize: 12
             }
         }
@@ -924,13 +884,12 @@ ShellRoot {
                     width: parent.width - 48
                     spacing: 12
 
-                    Text {
+                    Txt {
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
                         text: "󰐲  " + win.shareSsid
                         color: Theme.accent
-                        font.family: Theme.fontFamily
                         font.pixelSize: 15
                         font.bold: true
                         elide: Text.ElideRight
@@ -952,7 +911,7 @@ ShellRoot {
                             smooth: false          // crisp modules
                             fillMode: Image.PreserveAspectFit
                         }
-                        Text {
+                        Txt {
                             anchors.centerIn: parent
                             width: parent.width - 32
                             visible: win.shareQr === ""
@@ -960,17 +919,15 @@ ShellRoot {
                             wrapMode: Text.Wrap
                             text: win.shareError !== "" ? win.shareError : "…"
                             color: win.shareError !== "" ? "#b3261e" : "#555"
-                            font.family: Theme.fontFamily
                             font.pixelSize: 12
                         }
                     }
 
-                    Text {
+                    Txt {
                         anchors.horizontalCenter: parent.horizontalCenter
                         visible: win.shareError === ""
                         text: "point a phone camera here to join"
                         color: Qt.alpha(Theme.fg, 0.6)
-                        font.family: Theme.fontFamily
                         font.pixelSize: 12
                     }
 
@@ -1033,11 +990,10 @@ ShellRoot {
                             radius: 8
                             color: Qt.alpha(Theme.fg, 0.06)
 
-                            Text {
+                            Txt {
                                 anchors.centerIn: parent
                                 text: win.headerIcon
                                 color: win.headerColor
-                                font.family: Theme.fontFamily
                                 font.pixelSize: 22
                             }
                         }
@@ -1051,23 +1007,19 @@ ShellRoot {
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 3
 
-                            Text {
+                            Txt {
                                 width: parent.width
                                 text: win.headerName
-                                color: Theme.fg
-                                font.family: Theme.fontFamily
                                 font.pixelSize: 13   // the media popup's title size
                                 font.bold: true
                                 elide: Text.ElideRight
                             }
-                            Text {
+                            Txt {
                                 width: parent.width
                                 text: win.headerStatus
                                 color: win.connectivity === "portal" || win.connectivity === "limited"
                                        || win.connectivity === "none" ? win.headerColor
                                      : Qt.alpha(Theme.fg, 0.55)
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
                                 elide: Text.ElideRight
 
                                 // sign-in page: any plain-http request lands on it
@@ -1092,7 +1044,7 @@ ShellRoot {
                             onClicked: win.openShare()
                         }
 
-                        Text {
+                        Txt {
                             id: wifiLabel
                             visible: heroToggle.visible
                             anchors.right: heroToggle.left
@@ -1100,8 +1052,6 @@ ShellRoot {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "Wi-Fi"
                             color: Qt.alpha(Theme.fg, 0.5)
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
                         }
 
                         Toggle {
@@ -1154,12 +1104,11 @@ ShellRoot {
                     }
 
                     // the plumbing, small: interface and profile name
-                    Text {
+                    Txt {
                         visible: win.primary !== null
                         width: parent.width
                         text: win.primary ? win.primary.dev + " · " + win.primary.conn : ""
                         color: Qt.alpha(Theme.fg, 0.35)
-                        font.family: Theme.fontFamily
                         font.pixelSize: 10
                         elide: Text.ElideRight
                     }
@@ -1179,17 +1128,16 @@ ShellRoot {
                         width: parent.width
                         height: 30
 
-                        Text {
+                        Txt {
                             id: tsName
                             anchors.left: parent.left
                             anchors.leftMargin: 10
                             anchors.verticalCenter: parent.verticalCenter
                             text: "󰦝  Tailscale"
                             color: win.tsState === "Running" ? Theme.green : Theme.fg
-                            font.family: Theme.fontFamily
                             font.pixelSize: 12
                         }
-                        Text {
+                        Txt {
                             anchors.left: tsName.right
                             anchors.leftMargin: 12
                             anchors.right: tsToggle.left
@@ -1202,8 +1150,6 @@ ShellRoot {
                                 : win.tsState === "NeedsLogin" ? "not logged in — click to log in"
                                 : "off"
                             color: win.tsState === "NeedsLogin" ? Theme.accent : Theme.disabled
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
                             elide: Text.ElideRight
                         }
                         Toggle {
@@ -1223,14 +1169,12 @@ ShellRoot {
                         width: parent.width
                         height: 28
 
-                        Text {
+                        Txt {
                             anchors.left: parent.left
                             anchors.leftMargin: 26
                             anchors.verticalCenter: parent.verticalCenter
                             text: "exit node"
                             color: Qt.alpha(Theme.fg, 0.6)
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
                         }
                         SmallButton {
                             anchors.right: parent.right
@@ -1254,26 +1198,23 @@ ShellRoot {
                             color: current ? Qt.alpha(Theme.accent, 0.2)
                                  : exitMa.containsMouse ? Qt.alpha(Theme.fg, 0.08) : "transparent"
 
-                            Text {
+                            Txt {
                                 anchors.left: parent.left
                                 anchors.leftMargin: 26
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: exitRow.modelData.name === "" ? "none" : exitRow.modelData.name
                                 color: !exitRow.modelData.online ? Theme.disabled
                                      : exitRow.current ? Theme.accent : Theme.fg
-                                font.family: Theme.fontFamily
                                 font.pixelSize: 12
                                 font.bold: exitRow.current
                             }
-                            Text {
+                            Txt {
                                 visible: !exitRow.modelData.online
                                 anchors.right: parent.right
                                 anchors.rightMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "offline"
                                 color: Theme.disabled
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
                             }
                             MouseArea {
                                 id: exitMa
@@ -1300,36 +1241,31 @@ ShellRoot {
                             width: parent.width
                             height: 30
 
-                            Text {
+                            Txt {
                                 id: vpnName
                                 anchors.left: parent.left
                                 anchors.leftMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "󰦝  " + vpnRow.modelData.name
                                 color: vpnRow.modelData.active ? Theme.green : Theme.fg
-                                font.family: Theme.fontFamily
                                 font.pixelSize: 12
                             }
 
-                            Text {
+                            Txt {
                                 visible: vpnRow.modelData.active
                                 anchors.left: vpnName.right
                                 anchors.leftMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: win.rateText(vpnRow.modelData.name)
                                 color: Theme.disabled
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
                             }
 
-                            Text {
+                            Txt {
                                 visible: vpnRow.modelData.external
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: vpnRow.modelData.active ? "on · external" : "external"
                                 color: vpnRow.modelData.active ? Theme.green : Theme.disabled
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
                             }
 
                             Toggle {
@@ -1352,12 +1288,11 @@ ShellRoot {
                         visible: win.wifiDev !== "" && win.wifiOn
                         text: "Known networks"
                     }
-                    Text {
+                    Txt {
                         visible: win.wifiDev !== "" && win.wifiOn && win.knownNets.length === 0
                         leftPadding: 10
                         text: win.scanning ? "scanning…" : "none in range"
                         color: Theme.disabled
-                        font.family: Theme.fontFamily
                         font.pixelSize: 12
                     }
                     Repeater {
@@ -1369,12 +1304,11 @@ ShellRoot {
                         visible: win.wifiDev !== "" && win.wifiOn
                         text: "Other networks"
                     }
-                    Text {
+                    Txt {
                         visible: win.wifiDev !== "" && win.wifiOn && win.otherNets.length === 0
                         leftPadding: 10
                         text: win.scanning ? "scanning…" : "none found"
                         color: Theme.disabled
-                        font.family: Theme.fontFamily
                         font.pixelSize: 12
                     }
                     Repeater {
@@ -1429,19 +1363,18 @@ ShellRoot {
 
                             Behavior on color { ColorAnimation { duration: 120 } }
 
-                            Text {
+                            Txt {
                                 anchors.left: parent.left
                                 anchors.leftMargin: 10
                                 anchors.right: btState.left
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "󰂯  " + btRow.modelData.name
                                 color: btRow.modelData.connected ? Theme.accent : Theme.fg
-                                font.family: Theme.fontFamily
                                 font.pixelSize: 12
                                 font.bold: btRow.modelData.connected
                                 elide: Text.ElideRight
                             }
-                            Text {
+                            Txt {
                                 id: btState
                                 anchors.right: parent.right
                                 anchors.rightMargin: 10
@@ -1453,8 +1386,6 @@ ShellRoot {
                                 color: btRow.modelData.connected
                                     ? (btRow.modelData.battery >= 0 && btRow.modelData.battery <= 15 ? Theme.alert : Theme.green)
                                     : Theme.disabled
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
                             }
                             MouseArea {
                                 id: btMa
@@ -1481,26 +1412,23 @@ ShellRoot {
 
                             Behavior on color { ColorAnimation { duration: 120 } }
 
-                            Text {
+                            Txt {
                                 anchors.left: parent.left
                                 anchors.leftMargin: 10
                                 anchors.right: btNewTag.left
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "󰂱  " + btNewRow.modelData.name
                                 color: Qt.alpha(Theme.fg, 0.7)
-                                font.family: Theme.fontFamily
                                 font.pixelSize: 12
                                 elide: Text.ElideRight
                             }
-                            Text {
+                            Txt {
                                 id: btNewTag
                                 anchors.right: parent.right
                                 anchors.rightMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "pair"
                                 color: Theme.disabled
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
                             }
                             MouseArea {
                                 id: btNewMa
@@ -1518,7 +1446,7 @@ ShellRoot {
                         width: parent.width
                         height: 28
 
-                        Text {
+                        Txt {
                             anchors.left: parent.left
                             anchors.right: footerButtons.left
                             anchors.rightMargin: 10
@@ -1526,8 +1454,6 @@ ShellRoot {
                             text: win.status
                             color: win.status.indexOf("fail") !== -1
                                 || win.status.indexOf("Error") !== -1 ? Theme.alert : Theme.disabled
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
                             elide: Text.ElideRight
                         }
 
@@ -1576,14 +1502,13 @@ ShellRoot {
 
                     Behavior on color { ColorAnimation { duration: 120 } }
 
-                    Text {
+                    Txt {
                         id: netSig
                         anchors.left: parent.left
                         anchors.leftMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
                         text: win.sigGlyph(netRow.modelData.signal)
                         color: netRow.modelData.inUse ? Theme.accent : Qt.alpha(Theme.fg, 0.7)
-                        font.family: Theme.fontFamily
                         font.pixelSize: 15
                     }
 
@@ -1595,32 +1520,29 @@ ShellRoot {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 2
 
-                        Text {
+                        Txt {
                             width: parent.width
                             text: netRow.modelData.ssid
                             color: netRow.modelData.inUse ? Theme.accent : Theme.fg
-                            font.family: Theme.fontFamily
                             font.pixelSize: 12
                             font.bold: netRow.modelData.inUse
                             elide: Text.ElideRight
                         }
-                        Text {
+                        Txt {
                             visible: netRow.modelData.inUse
                             text: "connected · click to disconnect"
                             color: Qt.alpha(Theme.fg, 0.5)
-                            font.family: Theme.fontFamily
                             font.pixelSize: 10
                         }
                     }
 
-                    Text {
+                    Txt {
                         id: lockT
                         anchors.right: parent.right
                         anchors.rightMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
                         text: win.secured(netRow.modelData) ? "󰌾" : ""
                         color: Theme.disabled
-                        font.family: Theme.fontFamily
                         font.pixelSize: 12
                     }
 
@@ -1677,11 +1599,10 @@ ShellRoot {
                             height: 24
                             radius: 7
                             color: eyeMa.containsMouse ? Qt.alpha(Theme.fg, 0.14) : "transparent"
-                            Text {
+                            Txt {
                                 anchors.centerIn: parent
                                 text: netRow.showPw ? "󰈉" : "󰈈"
                                 color: Qt.alpha(Theme.fg, 0.7)
-                                font.family: Theme.fontFamily
                                 font.pixelSize: 14
                             }
                             MouseArea {
@@ -1705,12 +1626,10 @@ ShellRoot {
                             height: 24
                             radius: 7
                             color: Theme.accent
-                            Text {
+                            Txt {
                                 anchors.centerIn: parent
                                 text: "join"
                                 color: Theme.bg
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
                                 font.bold: true
                             }
                             MouseArea {

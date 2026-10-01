@@ -4,7 +4,8 @@ import Quickshell
 import Quickshell.Io
 
 // Minimal copy of the bar's Theme singleton: live palette from colors.ini,
-// so the network window follows the wallpaper theming.
+// so a window outside the bar (the network app, the lock screen) follows
+// the wallpaper theming.
 Singleton {
     id: root
 

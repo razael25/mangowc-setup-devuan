@@ -35,11 +35,10 @@ Popout {
         color: main ? (tbMa.containsMouse && allowed ? Qt.lighter(Theme.accent, 1.15) : Theme.accent)
              : tbMa.containsMouse && allowed ? Qt.alpha(Theme.fg, 0.14) : Qt.alpha(Theme.fg, 0.07)
         Behavior on color { ColorAnimation { duration: 120 } }
-        Text {
+        Txt {
             anchors.centerIn: parent
             text: parent.glyph
             color: parent.main ? Theme.bg : Theme.fg
-            font.family: Theme.fontFamily
             font.pixelSize: parent.main ? 20 : 16
         }
         MouseArea {
@@ -76,12 +75,11 @@ Popout {
                     fillMode: Image.PreserveAspectCrop
                     visible: status === Image.Ready
                 }
-                Text {
+                Txt {
                     anchors.centerIn: parent
                     visible: art.status !== Image.Ready
                     text: "󰝚"
                     color: Qt.alpha(Theme.fg, 0.3)
-                    font.family: Theme.fontFamily
                     font.pixelSize: 30
                 }
             }
@@ -91,39 +89,33 @@ Popout {
                 anchors.verticalCenter: artFrame.verticalCenter
                 spacing: 3
 
-                Text {
+                Txt {
                     width: parent.width
                     text: root.player?.trackTitle ?? ""
-                    color: Theme.fg
-                    font.family: Theme.fontFamily
                     font.pixelSize: 13
                     font.bold: true
                     elide: Text.ElideRight
                     maximumLineCount: 2
                     wrapMode: Text.Wrap
                 }
-                Text {
+                Txt {
                     width: parent.width
                     text: root.media.artistText
                     color: Qt.alpha(Theme.fg, 0.75)
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
                     elide: Text.ElideRight
                 }
-                Text {
+                Txt {
                     width: parent.width
                     visible: (root.player?.trackAlbum ?? "") !== ""
                     text: root.player?.trackAlbum ?? ""
                     color: Qt.alpha(Theme.fg, 0.5)
-                    font.family: Theme.fontFamily
                     font.pixelSize: 10
                     elide: Text.ElideRight
                 }
-                Text {
+                Txt {
                     width: parent.width
                     text: root.player?.identity ?? ""
                     color: Qt.alpha(Theme.accent, 0.7)
-                    font.family: Theme.fontFamily
                     font.pixelSize: 10
                     elide: Text.ElideRight
                 }
@@ -136,21 +128,17 @@ Popout {
             height: 30
             visible: root.media.timed
 
-            Text {
+            Txt {
                 anchors.left: parent.left
                 anchors.top: parent.top
                 text: root.media.fmt(root.media.pos)
                 color: Qt.alpha(Theme.fg, 0.6)
-                font.family: Theme.fontFamily
-                font.pixelSize: 11
             }
-            Text {
+            Txt {
                 anchors.right: parent.right
                 anchors.top: parent.top
                 text: root.media.fmt(root.media.len)
                 color: Qt.alpha(Theme.fg, 0.6)
-                font.family: Theme.fontFamily
-                font.pixelSize: 11
             }
 
             Rectangle {
@@ -236,7 +224,7 @@ Popout {
 
                 Behavior on color { ColorAnimation { duration: 120 } }
 
-                Text {
+                Txt {
                     id: pGlyph
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
@@ -246,10 +234,9 @@ Popout {
                     text: pRow.current ? "󰄬"
                         : pRow.modelData.playbackState === MprisPlaybackState.Playing ? "󰐊" : "󰏤"
                     color: pRow.current ? Theme.accent : Theme.cyan
-                    font.family: Theme.fontFamily
                     font.pixelSize: 14
                 }
-                Text {
+                Txt {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: pGlyph.right
                     anchors.leftMargin: 10
@@ -258,7 +245,6 @@ Popout {
                     text: pRow.modelData.identity
                     elide: Text.ElideRight
                     color: pRow.current ? Theme.fg : Qt.alpha(Theme.fg, 0.9)
-                    font.family: Theme.fontFamily
                     font.pixelSize: 12
                     font.bold: pRow.current
                 }

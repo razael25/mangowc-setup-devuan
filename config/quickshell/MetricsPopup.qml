@@ -312,13 +312,12 @@ Popout {
         width: parent.width
         height: 20
 
-        Text {
+        Txt {
             id: meterTag
             width: 40
             anchors.verticalCenter: parent.verticalCenter
             text: parent.tag
             color: parent.tint
-            font.family: Theme.fontFamily
             font.pixelSize: 12
             font.bold: true
         }
@@ -340,18 +339,16 @@ Popout {
                 Behavior on width { NumberAnimation { duration: 300 } }
             }
         }
-        Text {
+        Txt {
             id: meterValue
             width: 36
             anchors.right: meterDetail.left
             anchors.verticalCenter: parent.verticalCenter
             horizontalAlignment: Text.AlignRight
             text: Math.round(parent.value) + "%"
-            color: Theme.fg
-            font.family: Theme.fontFamily
             font.pixelSize: 12
         }
-        Text {
+        Txt {
             id: meterDetail
             width: 92
             anchors.right: parent.right
@@ -359,18 +356,15 @@ Popout {
             horizontalAlignment: Text.AlignRight
             text: parent.detail
             color: Qt.alpha(Theme.fg, 0.5)
-            font.family: Theme.fontFamily
-            font.pixelSize: 11
         }
     }
 
     // column header that sorts on click
-    component SortHeader: Text {
+    component SortHeader: Txt {
         property string key
         text: key.toUpperCase() + (root.sortBy === key ? " ▾" : "")
         color: root.sortBy === key ? Theme.accent : Qt.alpha(Theme.fg, 0.45)
         horizontalAlignment: Text.AlignRight
-        font.family: Theme.fontFamily
         font.pixelSize: 10
         font.bold: true
 
@@ -423,17 +417,13 @@ Popout {
                     id: tempItem
                     required property var modelData
                     spacing: 5
-                    Text {
+                    Txt {
                         text: tempItem.modelData.name
                         color: Qt.alpha(Theme.fg, 0.5)
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
                     }
-                    Text {
+                    Txt {
                         text: tempItem.modelData.c + "°"
                         color: tempItem.modelData.c >= tempItem.modelData.hot ? Theme.red : Theme.fg
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
                         font.bold: tempItem.modelData.c >= tempItem.modelData.hot
                     }
                 }
@@ -466,15 +456,14 @@ Popout {
                 width: parent.width
                 height: 18
 
-                Text {
+                Txt {
                     id: netGlyph
                     anchors.verticalCenter: parent.verticalCenter
                     text: "󰒍"
                     color: netRow.modelData.state === "unreachable" ? Qt.alpha(Theme.fg, 0.35) : Theme.cyan
-                    font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
-                Text {
+                Txt {
                     anchors.left: netGlyph.right
                     anchors.leftMargin: 8
                     anchors.right: netVal.left
@@ -483,10 +472,8 @@ Popout {
                     text: netRow.modelData.name
                     elide: Text.ElideRight
                     color: Qt.alpha(Theme.fg, 0.8)
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
                 }
-                Text {
+                Txt {
                     id: netVal
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
@@ -494,32 +481,27 @@ Popout {
                         ? root.mem(netRow.modelData.used) + " / " + root.mem(netRow.modelData.size)
                         : netRow.modelData.state === "checking" ? "checking…" : "not reachable"
                     color: netRow.modelData.state === "ok" ? Qt.alpha(Theme.fg, 0.6) : Qt.alpha(Theme.fg, 0.4)
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
                 }
             }
         }
 
         // disk activity, like the network window's receiving / sending
-        Text {
+        Txt {
             visible: root.ioRead >= 0
             text: "disk  read " + root.rate(root.ioRead) + "  ·  write " + root.rate(root.ioWrite)
             color: Qt.alpha(Theme.fg, 0.5)
-            font.family: Theme.fontFamily
-            font.pixelSize: 11
         }
 
         Item {
             width: parent.width
             height: 18
 
-            Text {
+            Txt {
                 anchors.left: parent.left
                 anchors.leftMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
                 text: "PROGRAM"
                 color: Qt.alpha(Theme.fg, 0.45)
-                font.family: Theme.fontFamily
                 font.pixelSize: 10
                 font.bold: true
             }
@@ -545,13 +527,11 @@ Popout {
             width: parent.width
             height: root.maxRows * root.rowHeight
 
-            Text {
+            Txt {
                 anchors.centerIn: parent
                 visible: root.rows.length === 0
                 text: "sampling…"
                 color: Qt.alpha(Theme.fg, 0.4)
-                font.family: Theme.fontFamily
-                font.pixelSize: 11
             }
 
             Column {
@@ -602,7 +582,7 @@ Popout {
                         }
 
                         // name, then a dim ×N when the program runs as several processes
-                        Text {
+                        Txt {
                             id: nameText
                             anchors.left: parent.left
                             anchors.leftMargin: 8
@@ -613,11 +593,10 @@ Popout {
                             text: row.armed ? "End " + row.modelData.name + "?" : row.modelData.name
                             color: row.armed ? Theme.bg
                                  : row.endingState ? Qt.alpha(Theme.fg, 0.45) : Theme.fg
-                            font.family: Theme.fontFamily
                             font.pixelSize: 12
                             font.bold: row.armed
                         }
-                        Text {
+                        Txt {
                             id: countText
                             anchors.left: nameText.right
                             anchors.leftMargin: 6
@@ -625,23 +604,19 @@ Popout {
                             visible: row.modelData.count > 1
                             text: "×" + row.modelData.count
                             color: row.armed ? Theme.bg : Qt.alpha(Theme.fg, 0.4)
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
                         }
 
                         // armed: what the second click does, over the number columns
-                        Text {
+                        Txt {
                             anchors.right: parent.right
                             anchors.rightMargin: 8
                             anchors.verticalCenter: parent.verticalCenter
                             visible: row.armed
                             text: "click again to quit it"
                             color: Theme.bg
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
                         }
 
-                        Text {
+                        Txt {
                             id: cpuText
                             width: 56
                             anchors.right: memText.left
@@ -650,10 +625,9 @@ Popout {
                             visible: !row.armed && !row.endingState
                             text: row.modelData.cpu.toFixed(1)
                             color: row.modelData.cpu >= 10 ? Theme.red : Qt.alpha(Theme.fg, 0.85)
-                            font.family: Theme.fontFamily
                             font.pixelSize: 12
                         }
-                        Text {
+                        Txt {
                             id: memText
                             width: 64
                             anchors.right: parent.right
@@ -663,20 +637,17 @@ Popout {
                             visible: !row.armed && !row.endingState
                             text: root.mem(row.modelData.rss)
                             color: Qt.alpha(Theme.fg, 0.85)
-                            font.family: Theme.fontFamily
                             font.pixelSize: 12
                         }
 
                         // SIGTERM sent: waiting, then Force quit if it's still around
-                        Text {
+                        Txt {
                             anchors.right: parent.right
                             anchors.rightMargin: 30
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !!row.endingState && !row.endingState.stuck
                             text: "quitting…"
                             color: Qt.alpha(Theme.fg, 0.45)
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
                             font.italic: true
                         }
                         Rectangle {
@@ -689,13 +660,11 @@ Popout {
                             radius: 5
                             color: forceMa.containsMouse ? Theme.red : Qt.alpha(Theme.red, 0.2)
 
-                            Text {
+                            Txt {
                                 id: forceText
                                 anchors.centerIn: parent
                                 text: "Force quit"
                                 color: forceMa.containsMouse ? Theme.bg : Theme.red
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
                                 font.bold: true
                             }
 
@@ -720,12 +689,10 @@ Popout {
                             radius: 5
                             color: xMa.containsMouse ? Qt.alpha(Theme.red, 0.25) : "transparent"
 
-                            Text {
+                            Txt {
                                 anchors.centerIn: parent
                                 text: "✕"
                                 color: xMa.containsMouse ? Theme.red : Qt.alpha(Theme.fg, 0.5)
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
                             }
 
                             MouseArea {
@@ -759,18 +726,16 @@ Popout {
                 anchors.centerIn: parent
                 spacing: 8
 
-                Text {
+                Txt {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "󰍛"
                     color: Theme.cyan
-                    font.family: Theme.fontFamily
                     font.pixelSize: 14
                 }
-                Text {
+                Txt {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "open btop"
                     color: Qt.alpha(Theme.fg, 0.9)
-                    font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
             }

@@ -53,12 +53,11 @@ Rectangle {
             Behavior on color { ColorAnimation { duration: 250 } }
         }
 
-        Text {
+        Txt {
             visible: root.label !== ""
             anchors.verticalCenter: parent.verticalCenter
             text: root.label
             color: root.labelColor
-            font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSize
             Behavior on color { ColorAnimation { duration: 250 } }
         }

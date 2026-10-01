@@ -164,13 +164,11 @@ Item {
         onWheel: wheel => view.zoom = Math.max(5, Math.min(8, view.zoom + (wheel.angleDelta.y > 0 ? 1 : -1)))
     }
 
-    Text {
+    Txt {
         visible: view.frames.length === 0
         anchors.centerIn: parent
         text: view.error !== "" ? "󰅙 " + view.error : "loading radar…"
         color: view.error !== "" ? Theme.red : Qt.alpha(Theme.fg, 0.5)
-        font.family: Theme.fontFamily
-        font.pixelSize: 11
     }
 
     // frame time, bottom left
@@ -192,14 +190,13 @@ Item {
             onClicked: view.paused = !view.paused
         }
 
-        Text {
+        Txt {
             id: timeText
             anchors.centerIn: parent
             text: (view.paused ? "󰏤 " : "") + (view.frames[view.frame]
                   ? Qt.formatTime(new Date(view.frames[view.frame].t * 1000), "h:mm AP") : "")
                   + (view.loading ? " · updating" : "")
             color: view.frame === view.frames.length - 1 ? Theme.fg : Qt.alpha(Theme.fg, 0.6)
-            font.family: Theme.fontFamily
             font.pixelSize: 10
         }
     }
@@ -221,12 +218,10 @@ Item {
                 width: 22; height: 20; radius: 6
                 color: Qt.alpha(Theme.bg, zbMa.containsMouse ? 0.95 : 0.8)
 
-                Text {
+                Txt {
                     anchors.centerIn: parent
                     text: zb.modelData.glyph
                     color: zb.can ? Theme.fg : Theme.disabled
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
                 }
                 MouseArea {
                     id: zbMa
@@ -241,13 +236,12 @@ Item {
     }
 
     // the map makers' due
-    Text {
+    Txt {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 4
         text: "Esri · RainViewer"
         color: Qt.alpha(Theme.fg, 0.4)
-        font.family: Theme.fontFamily
         font.pixelSize: 8
     }
 }
