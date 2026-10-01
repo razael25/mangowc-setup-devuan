@@ -2,17 +2,22 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Pipewire
 
-// Lightweight system metrics: cpu/mem/disk on a 3s tick. Network follows
-// `nmcli monitor` (connect, drop, VPN up, connectivity change show at once)
-// plus a slow poll for Wi-Fi signal strength, which the monitor doesn't report.
+// Lightweight system state for the bar, built to cost nothing while idle:
+//   cpu / memory / battery   files read in-process on a 3 s tick (no shell)
+//   caps lock                the keyboard LED files, read in-process each second
+//   mic mute                 Pipewire tells us; nothing is polled
+//   disk, do-not-disturb     one small process a minute (and right after a toggle)
+//   network                  follows `nmcli monitor` — connect, drop, VPN,
+//                            connectivity show at once; on Wi-Fi only, the
+//                            signal strength is asked for every 30 s
 Singleton {
     id: root
 
     property real cpu: 0
     property real mem: 0
     property real disk: 0
-    property bool hasBattery: false
     property real battery: 0
     property bool batteryCharging: false
     property string netName: ""
@@ -41,102 +46,142 @@ Singleton {
 
     property var _prev: ({ idle: 0, total: 0 })
 
+    // /proc and /sys answer a plain read: no process, no shell
+    FileView {
+        id: statFile
+        path: "/proc/stat"
+        onLoaded: {
+            const f = text().split("\n")[0].trim().split(/\s+/).slice(1).map(Number)
+            const idle = f[3] + (f[4] || 0)
+            const total = f.reduce((a, b) => a + b, 0)
+            const dIdle = idle - root._prev.idle
+            const dTotal = total - root._prev.total
+            if (root._prev.total > 0 && dTotal > 0)
+                root.cpu = Math.max(0, Math.min(100, 100 * (1 - dIdle / dTotal)))
+            root._prev = { idle: idle, total: total }
+        }
+    }
+    FileView {
+        id: memFile
+        path: "/proc/meminfo"
+        onLoaded: {
+            const t = text()
+            const total = parseInt((t.match(/MemTotal:\s+(\d+)/) ?? [])[1])
+            const avail = parseInt((t.match(/MemAvailable:\s+(\d+)/) ?? [])[1])
+            if (total > 0)
+                root.mem = 100 * (1 - avail / total)
+        }
+    }
+    // a laptop's battery, once the slow check below has found its folder
+    property string batDir: ""
+    readonly property bool hasBattery: batDir !== ""
+    FileView {
+        id: batCapacity
+        path: root.batDir !== "" ? root.batDir + "/capacity" : ""
+        onLoaded: root.battery = parseInt(text()) || 0
+    }
+    FileView {
+        id: batStatus
+        path: root.batDir !== "" ? root.batDir + "/status" : ""
+        onLoaded: root.batteryCharging = text().trim() === "Charging"
+    }
     Timer {
         interval: 3000
         running: true
         repeat: true
-        triggeredOnStart: true
-        onTriggered: statProc.running = true
-    }
-
-    Process {
-        id: statProc
-        command: ["sh", "-c",
-            "head -1 /proc/stat; grep -E '^(MemTotal|MemAvailable)' /proc/meminfo; df --output=pcent / | tail -1; " +
-            "for b in /sys/class/power_supply/BAT*; do [ -r \"$b/capacity\" ] && echo \"BAT $(cat \"$b/capacity\") $(cat \"$b/status\")\" && break; done; true"]
-        stdout: StdioCollector {
-            onStreamFinished: root.parseStat(text)
-        }
-    }
-
-    function parseStat(t) {
-        const lines = t.trim().split("\n")
-        let memTotal = 0, memAvail = 0, foundBattery = false
-        for (const line of lines) {
-            if (line.startsWith("cpu ")) {
-                const f = line.trim().split(/\s+/).slice(1).map(Number)
-                const idle = f[3] + (f[4] || 0)
-                const total = f.reduce((a, b) => a + b, 0)
-                const dIdle = idle - _prev.idle
-                const dTotal = total - _prev.total
-                if (_prev.total > 0 && dTotal > 0)
-                    cpu = Math.max(0, Math.min(100, 100 * (1 - dIdle / dTotal)))
-                _prev = { idle: idle, total: total }
-            } else if (line.startsWith("MemTotal:")) {
-                memTotal = parseInt(line.split(/\s+/)[1])
-            } else if (line.startsWith("MemAvailable:")) {
-                memAvail = parseInt(line.split(/\s+/)[1])
-            } else if (line.startsWith("BAT ")) {
-                const parts = line.split(/\s+/)
-                foundBattery = true
-                battery = parseInt(parts[1])
-                batteryCharging = parts[2] === "Charging"
-            } else if (line.indexOf("%") !== -1) {
-                disk = parseInt(line)
+        onTriggered: {
+            statFile.reload()
+            memFile.reload()
+            if (root.batDir !== "") {
+                batCapacity.reload()
+                batStatus.reload()
             }
         }
-        if (memTotal > 0)
-            mem = 100 * (1 - memAvail / memTotal)
-        hasBattery = foundBattery
+    }
+
+    // The slow things, one process a minute: disk use, dunst's paused
+    // state (it only changes through the bar's own toggle, which rechecks
+    // at once), and where the caps-lock LEDs and the battery live.
+    Process {
+        id: slowProc
+        command: ["sh", "-c",
+            "df --output=pcent / | tail -n1; echo ===; " +
+            "dunstctl is-paused 2>/dev/null || echo false; echo ===; " +
+            "ls /sys/class/leds/*capslock/brightness 2>/dev/null; echo ===; " +
+            "for b in /sys/class/power_supply/BAT*; do [ -r \"$b/capacity\" ] && echo \"$b\" && break; done; true"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const parts = text.split("===\n")
+                const d = parseInt(parts[0])
+                if (!isNaN(d))
+                    root.disk = d
+                root.dndOn = (parts[1] ?? "").trim() === "true"
+                const leds = (parts[2] ?? "").trim().split("\n").filter(l => l !== "")
+                if (leds.join() !== root.capsPaths.join())
+                    root.capsPaths = leds
+                root.batDir = (parts[3] ?? "").trim()
+            }
+        }
+    }
+    Timer {
+        interval: 60 * 1000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: slowProc.running = true
     }
 
     property bool capsOn: false
     property bool dndOn: false
-    property bool micMuted: false
     // Wayland popups are xdg-popups sized to their card; Popout's
     // fullscreen click-catcher mode (for bare X11) is never wanted here
     readonly property bool composited: false
 
-    Timer {
-        interval: 1000
-        running: true
-        repeat: true
-        onTriggered: capsProc.running = true
-    }
-
-    // one process per tick covers the indicators: caps lock (keyboard
-    // LED state via sysfs — no X server to ask) + dunst paused +
-    // default-source mute. Each field is one guaranteed line.
-    Process {
-        id: capsProc
-        command: ["sh", "-c",
-            "c=0; for l in /sys/class/leds/*capslock/brightness; do " +
-            "[ -r \"$l\" ] && [ \"$(cat \"$l\")\" != 0 ] && c=1; done; echo $c; " +
-            "dunstctl is-paused 2>/dev/null || echo false; " +
-            "pactl get-source-mute @DEFAULT_SOURCE@ 2>/dev/null || echo"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const lines = text.trim().split("\n")
-                root.capsOn = lines[0] === "1"
-                root.dndOn = lines[1] === "true"
-                root.micMuted = lines[2] === "Mute: yes"
+    // caps lock: the keyboards' LED files (no X server to ask on
+    // Wayland), one reader per LED, any lit one counts
+    property var capsPaths: []
+    property var _capsLit: ({})
+    Instantiator {
+        id: capsLeds
+        model: root.capsPaths
+        delegate: FileView {
+            required property string modelData
+            path: modelData
+            onLoaded: {
+                root._capsLit[modelData] = text().trim() !== "0"
+                root.capsOn = root.capsPaths.some(p => root._capsLit[p] === true)
             }
         }
     }
+    Timer {
+        interval: 1000
+        running: root.capsPaths.length > 0
+        repeat: true
+        onTriggered: {
+            for (let i = 0; i < capsLeds.count; i++)
+                capsLeds.objectAt(i).reload()
+        }
+    }
 
-    // fast re-poll so the icon settles right after a toggle instead of
-    // waiting out (or fighting) the 1s tick
+    // mic mute straight from Pipewire: the default source, when it's a
+    // real input and not a monitor of the speakers
+    readonly property var micNode: Pipewire.defaultAudioSource?.type === PwNodeType.AudioSource
+                                   ? Pipewire.defaultAudioSource : null
+    PwObjectTracker { objects: [root.micNode] }
+    readonly property bool micMuted: micNode?.audio?.muted ?? false
+
+    // recheck dunst right after a toggle instead of waiting out the minute
     Timer {
         id: dndRefresh
         interval: 300
-        onTriggered: capsProc.running = true
+        onTriggered: slowProc.running = true
     }
 
     function toggleMicMute() {
-        Quickshell.execDetached(["pactl", "set-source-mute",
-                                 "@DEFAULT_SOURCE@", "toggle"])
-        micMuted = !micMuted
-        dndRefresh.restart()
+        if (micNode?.audio)
+            micNode.audio.muted = !micNode.audio.muted
+        else
+            Quickshell.execDetached(["pactl", "set-source-mute", "@DEFAULT_SOURCE@", "toggle"])
     }
 
     function toggleDnd() {
@@ -169,21 +214,35 @@ Singleton {
     Timer {
         id: netMonitorRetry
         interval: 5000
-        onTriggered: netMonitor.running = true
+        onTriggered: {
+            netMonitor.running = true
+            netProc.running = true   // catch up on what was missed
+        }
     }
+    Component.onCompleted: netProc.running = true
     Timer {
         id: netDebounce
         interval: 300
         onTriggered: netProc.running = true
     }
-    // signal strength isn't announced: poll it on Wi-Fi, and keep a slow
-    // safety poll otherwise
+    // signal strength is the one thing the monitor doesn't announce:
+    // on Wi-Fi only, one small question every 30 s
+    Process {
+        id: signalProc
+        command: ["nmcli", "-t", "-f", "IN-USE,SIGNAL", "device", "wifi", "list", "--rescan", "no"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const m = text.match(/^\*:(\d+)/m)
+                if (root.wireless && m)
+                    root.wifiSignal = parseInt(m[1])
+            }
+        }
+    }
     Timer {
-        interval: root.wireless ? 15000 : 60000
-        running: true
+        interval: 30 * 1000
+        running: root.wireless
         repeat: true
-        triggeredOnStart: true
-        onTriggered: netProc.running = true
+        onTriggered: signalProc.running = true
     }
 
     // primary transport + vpn tracked separately: a vpn/wireguard/tun
