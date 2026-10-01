@@ -263,7 +263,7 @@ if gtk_template_ok; then
 
     if [ -f "$HOME/.xsettingsd" ]; then
         sed -i "s|^Net/ThemeName .*|Net/ThemeName \"$NEW\"|" "$HOME/.xsettingsd"
-        killall xsettingsd 2>/dev/null || true
+        pkill -x xsettingsd 2>/dev/null || true
         xsettingsd >/dev/null 2>&1 9>&- &
     fi
 

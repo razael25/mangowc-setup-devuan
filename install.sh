@@ -107,10 +107,15 @@ PACKAGES_CORE=(
 )
 
 # quickshell pulls its qml6 modules in through Recommends
+# bluez, pulseaudio-utils, xdg-utils, pkexec and python3 back features
+# of the bar (Bluetooth rows, the timer chime, opening links, the
+# Tailscale grant, restoring a kept display layout); a full Debian
+# usually has them, a minimal one doesn't
 PACKAGES_BAR=(
     quickshell rofi dunst libnotify-bin btop
     pamixer playerctl brightnessctl wlsunset power-profiles-daemon
     network-manager-gnome network-manager-config-connectivity-debian qrencode
+    bluez pulseaudio-utils xdg-utils pkexec python3
 )
 
 PACKAGES_WAYLAND=(
