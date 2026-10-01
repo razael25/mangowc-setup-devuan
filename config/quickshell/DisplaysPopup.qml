@@ -100,6 +100,7 @@ Popout {
                 x: o.position?.x ?? 0, y: o.position?.y ?? 0, scale: o.scale ?? 1,
                 transform: o.transform ?? "normal", vrr: o.adaptive_sync === true,
                 serial: o.serial && o.serial !== "Unknown" ? o.serial : "",
+                ident: [o.make, o.model, o.serial].map(x => x ?? "").join("|"),
                 inches: o.physical_size && o.physical_size.width > 0
                     ? Math.round(Math.hypot(o.physical_size.width, o.physical_size.height) / 25.4) : 0,
                 maxRes: o.modes.reduce((b, m) => m.width * m.height > b.w * b.h ? { w: m.width, h: m.height } : b,
@@ -244,7 +245,7 @@ Popout {
     function keep() {
         keepLeft = 0
         const text = outs.map(o => [o.name, o.on ? "on" : "off", modeStr(o), o.x + "," + o.y,
-                                    o.scale, o.transform, o.vrr ? 1 : 0].join("\t")).join("\n")
+                                    o.scale, o.transform, o.vrr ? 1 : 0, o.ident].join("\t")).join("\n")
         Quickshell.execDetached(["sh", "-c", 'printf "%s\\n" "$1" | "$0" save',
                                  Theme.configDir + "/scripts/displays", text])
         status = "kept · restored on every start"
