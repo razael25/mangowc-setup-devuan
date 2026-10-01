@@ -33,14 +33,18 @@ no Hyprland.
 ## 🚀 Installation
 
 ```bash
+sudo apt install git      # a minimal Debian doesn't have it
 git clone https://justaguy.dev/drew/mangowc-setup.git
 cd mangowc-setup
 chmod +x install.sh
 ./install.sh
 ```
 
-Then log out (all the way — a group membership changes) and pick **Mango**
-at the login screen.
+Then reboot and pick **Mango** at the login screen. On a machine that
+already had a login screen, logging out all the way is enough (a group
+membership changes), though a reboot is the sure way to get sound and
+screen sharing started. The installer tells you which applies, and warns
+if your wired connection is one NetworkManager won't manage yet.
 
 ```
 Options:
@@ -96,6 +100,7 @@ Everything else is stock Debian:
 | `x11-xserver-utils`           | `xhost`, so password-prompted root apps (Timeshift, GParted) can open a window |
 | `build-essential`             | Compiler toolchain, as in the other setups (nothing here builds from source, but a desktop should be able to) |
 | `kitty`                       | Terminal (via butterscripts)         |
+| `geany`                       | Editor (via butterscripts): `Super + E`, and editing a bind from the keybinds viewer |
 | `thunar` + plugins            | File manager                         |
 | `pipewire`                    | Audio                                |
 | `nwg-look`                    | GTK configurator                     |

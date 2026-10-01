@@ -81,6 +81,10 @@ echo
 [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
 
 # Update system
+# A machine with no login screen yet (a minimal Debian) needs a reboot at
+# the end, not a logout: remembered now, before one gets installed
+DM_AT_START=$(systemctl is-active display-manager 2>/dev/null || true)
+
 if [ "$ONLY_CONFIG" = false ]; then
     msg "Updating system..."
     sudo apt-get update && sudo apt-get upgrade -y
@@ -289,6 +293,11 @@ if [ "$ONLY_CONFIG" = false ]; then
     get_script "kitty/install_kitty.sh" --no-config \
         || warn "Kitty installation failed - you can install it manually later"
 
+    # the editor Super+E and the keybinds viewer open (config.conf, scripts/keybinds)
+    msg "Installing geany..."
+    get_script "geany/install_geany.sh" \
+        || warn "Geany installation failed - Super+E and editing from the keybinds viewer need an editor called geany"
+
     msg "Installing fonts..."
     get_script "theming/install_nerdfonts.sh" || warn "Font installation failed - you can install fonts manually later"
 
@@ -340,10 +349,33 @@ fi
 
 # Done
 echo -e "\n${GREEN}Installation complete!${NC}"
-echo "1. Log out (fully — the render group applies at next login) and select 'Mango' from your display manager"
+if [ "$DM_AT_START" = active ] || [ "$ONLY_CONFIG" = true ]; then
+    echo "1. Log out (fully — the render group applies at next login) and select 'Mango' from your display manager"
+    echo "   (no sound or screen sharing afterwards? reboot once: services installed just now start with a fresh login)"
+else
+    echo "1. Reboot, then select 'Mango' at the login screen"
+    echo "   (a reboot, not a logout: the login screen, sound and screen sharing all start with it)"
+fi
 echo "2. Press Super + / for keybindings"
 echo "3. Super + Space for application launcher"
 echo "4. Super + Shift + p for the wallpaper picker (re-themes the desktop from the image)"
 echo "5. Super + Shift + m for the command menu"
 echo "6. See ~/QUICKSTART-mango.md for a quick reference"
 echo "Installation log: $LOG_FILE"
+
+# NetworkManager leaves alone any interface Debian's installer wrote into
+# /etc/network/interfaces, which a netinst without a desktop does for the
+# wired one. The connection works but the bar can't see it. Say so, with
+# the fix: changing a machine's network setup is its owner's call.
+ifaces=$(awk '$1 == "iface" && $2 != "lo" { print $2 }' /etc/network/interfaces /etc/network/interfaces.d/* 2>/dev/null | sort -u | paste -sd' ')
+if [ -n "$ifaces" ] && command -v nmcli >/dev/null 2>&1; then
+    echo
+    warn "Network: $ifaces is set up in /etc/network/interfaces, so NetworkManager leaves it alone."
+    echo "  Your connection works, but the bar's network icon will show offline and the"
+    echo "  network app will be empty. To hand a DHCP interface over to NetworkManager:"
+    for i in $ifaces; do
+        echo "    sudo sed -i -E '/^(auto|allow-hotplug|iface) +$i( |\$)/ s/^/#/' /etc/network/interfaces"
+    done
+    echo "    sudo reboot"
+    echo "  (a static address you set by hand belongs in NetworkManager first: nmtui)"
+fi
