@@ -151,23 +151,38 @@ Popout {
         }
         return a
     }
-    // drag end: snap the moved output's edges to its neighbours'
-    function place(i, x, y) {
+    // drag end: snap the moved output's edges to its neighbours' (thr is
+    // in logical pixels — the stage passes a hand's width of its own),
+    // then make sure it overlaps nothing by nudging it off the nearest side
+    function place(i, x, y, thr) {
         const a = clone(outs)
         const o = a[i]
-        const thr = 48
         let bx = x, by = y, dx = thr, dy = thr
         for (let k = 0; k < a.length; k++) {
             if (k === i || !a[k].on)
                 continue
             const b = a[k]
-            for (const cx of [b.x + lw(b), b.x - lw(o), b.x])
+            for (const cx of [b.x + lw(b), b.x - lw(o), b.x, b.x + lw(b) - lw(o)])
                 if (Math.abs(cx - x) < dx) { dx = Math.abs(cx - x); bx = cx }
-            for (const cy of [b.y + lh(b), b.y - lh(o), b.y])
+            for (const cy of [b.y + lh(b), b.y - lh(o), b.y, b.y + lh(b) - lh(o)])
                 if (Math.abs(cy - y) < dy) { dy = Math.abs(cy - y); by = cy }
         }
         o.x = Math.round(bx)
         o.y = Math.round(by)
+        for (let k = 0; k < a.length; k++) {
+            if (k === i || !a[k].on)
+                continue
+            const b = a[k]
+            const ox = Math.min(o.x + lw(o), b.x + lw(b)) - Math.max(o.x, b.x)
+            const oy = Math.min(o.y + lh(o), b.y + lh(b)) - Math.max(o.y, b.y)
+            if (ox <= 0 || oy <= 0)
+                continue
+            // the shorter way out wins; sideways over up/down on a tie
+            if (ox <= oy)
+                o.x = o.x + lw(o) / 2 < b.x + lw(b) / 2 ? b.x - lw(o) : b.x + lw(b)
+            else
+                o.y = o.y + lh(o) / 2 < b.y + lh(b) / 2 ? b.y - lh(o) : b.y + lh(b)
+        }
         outs = normalise(a)
     }
 
@@ -427,7 +442,8 @@ Popout {
                     onPressed: { root.sel = mon.index; root._picked = true }
                     onReleased: {
                         if (drag.active)
-                            root.place(mon.index, (mon.x - canvas.ox) / canvas.k, (mon.y - canvas.oy) / canvas.k)
+                            root.place(mon.index, (mon.x - canvas.ox) / canvas.k, (mon.y - canvas.oy) / canvas.k,
+                                       40 / canvas.k)
                     }
                 }
             }
