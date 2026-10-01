@@ -25,7 +25,13 @@ esac
 pgrep -f "^qs -p $P" >/dev/null && exit 0
 cd "$HOME" || cd /
 LOCK_STYLE=$("$0" style)
-export LOCK_STYLE
+# the wallpaper for the blur style: the picker's note of it, else what
+# awww is showing, else config.conf's exec-once line (a fresh install)
+wall=$(cat "$HOME/.cache/mango/current_wallpaper" 2>/dev/null)
+[ -f "$wall" ] || wall=$(awww query 2>/dev/null | sed -n 's/.*currently displaying: image: //p' | head -n1)
+[ -f "$wall" ] || wall=$(sed -n 's/^exec-once=awww img \(.*\) --resize crop$/\1/p' "$C/config.conf" | sed "s|^\$HOME|$HOME|")
+LOCK_WALLPAPER=$wall
+export LOCK_STYLE LOCK_WALLPAPER
 # detached: swayidle and the bar must not wait for the unlock
 if command -v setsid >/dev/null 2>&1; then
     setsid -f qs -p "$P" >/dev/null 2>&1

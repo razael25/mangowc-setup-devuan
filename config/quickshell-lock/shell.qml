@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pam
 
@@ -17,7 +16,7 @@ ShellRoot {
     id: root
 
     readonly property string style: Quickshell.env("LOCK_STYLE") === "blur" ? "blur" : "rain"
-    property string wallpaper: ""
+    readonly property string wallpaper: Quickshell.env("LOCK_WALLPAPER")   // scripts/lock finds it
     property bool checking: false
     property bool wrong: false
     property date now: new Date()
@@ -28,11 +27,6 @@ ShellRoot {
         running: true
         repeat: true
         onTriggered: root.now = new Date()
-    }
-
-    FileView {
-        path: Quickshell.env("HOME") + "/.cache/mango/current_wallpaper"
-        onLoaded: root.wallpaper = text().trim()
     }
 
     // the password goes to PAM's conversation and nowhere else
