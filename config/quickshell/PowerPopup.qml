@@ -14,9 +14,11 @@ Popout {
     property int armed: -1
 
     readonly property var actions: [
+        { key: "l", icon: "󰌾", label: "Lock",
+          run: () => Quickshell.execDetached([Theme.configDir + "/scripts/lock"]) },
         { key: "o", icon: "󰌢", label: "Screen off",
           run: () => Quickshell.execDetached([Theme.configDir + "/scripts/screen-off"]) },
-        { key: "l", icon: "󰍃", label: "Log out", confirm: "Log out?",
+        { key: "e", icon: "󰍃", label: "Log out", confirm: "Log out?",
           run: () => Wm.logout() },
         { key: "r", icon: "󰜉", label: "Reboot", confirm: "Reboot?",
           run: () => Quickshell.execDetached(["systemctl", "reboot"]) },

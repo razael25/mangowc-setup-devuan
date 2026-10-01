@@ -46,6 +46,8 @@ BarModule {
     property bool btPresent: false
     property bool btOn: false
     property bool hasTimeshift: false
+    property bool lockIdle: false    // scripts/idle locks before the screen goes off
+    property bool lockRain: true     // lock screen style: matrix rain, else blur
 
     Process {
         id: stateProc
@@ -58,7 +60,9 @@ BarModule {
             "\"$(pgrep -f '[w]hy=quickshell-caffeine' >/dev/null && echo awake)\" " +
             "\"$(pgrep -x wlsunset >/dev/null && echo night)\" " +
             "\"$(bluetoothctl show 2>/dev/null | awk '/Powered:/ { print $2; exit }')\" " +
-            "\"$(command -v timeshift-launcher >/dev/null && echo timeshift)\""]
+            "\"$(command -v timeshift-launcher >/dev/null && echo timeshift)\" " +
+            "\"$(cat '" + Theme.configDir + "/lock-idle' 2>/dev/null)\" " +
+            "\"$('" + Theme.configDir + "/scripts/lock' style 2>/dev/null)\""]
         stdout: StdioCollector {
             onStreamFinished: {
                 const lines = text.split("\n")
@@ -74,6 +78,8 @@ BarModule {
                 root.btPresent = (lines[4] ?? "") !== ""
                 root.btOn = lines[4] === "yes"
                 root.hasTimeshift = lines[5] === "timeshift"
+                root.lockIdle = lines[6] === "1"
+                root.lockRain = lines[7] !== "blur"
             }
         }
     }
@@ -372,6 +378,24 @@ BarModule {
                               Quickshell.execDetached(["sh", "-c", root.caffeine
                                   ? "systemd-inhibit --what=idle --who=quickshell --why=quickshell-caffeine sleep infinity >/dev/null 2>&1 &"
                                   : "pkill -f '[w]hy=quickshell-caffeine'"])
+                          } },
+                        { icon: "󰌾", name: "Lock on idle",
+                          state: root.lockIdle ? "On" : "Off",
+                          active: root.lockIdle,
+                          run: () => {
+                              root.lockIdle = !root.lockIdle
+                              Quickshell.execDetached(["sh", "-c",
+                                  'printf "%s\\n" "$1" > "$2" && exec "$3"', "sh",
+                                  root.lockIdle ? "1" : "0", Theme.configDir + "/lock-idle",
+                                  Theme.configDir + "/scripts/idle"])
+                          } },
+                        { icon: root.lockRain ? "󰊠" : "󰂵", name: "Lock style",
+                          state: root.lockRain ? "Matrix" : "Blur",
+                          active: root.lockRain,
+                          run: () => {
+                              root.lockRain = !root.lockRain
+                              Quickshell.execDetached([Theme.configDir + "/scripts/lock", "style",
+                                                       root.lockRain ? "rain" : "blur"])
                           } },
                         { icon: Sys.micMuted ? "󰍭" : "󰍬", name: "Microphone",
                           state: Sys.micMuted ? "Muted" : "On",

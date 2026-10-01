@@ -114,7 +114,7 @@ PACKAGES_BAR=(
 
 PACKAGES_WAYLAND=(
     grim slurp swappy wl-clipboard cliphist
-    wlr-randr swayidle wlopm
+    wlr-randr swayidle wlopm qml6-module-qtquick-effects
     xdg-desktop-portal-wlr xdg-desktop-portal-gtk
     x11-xserver-utils
 )

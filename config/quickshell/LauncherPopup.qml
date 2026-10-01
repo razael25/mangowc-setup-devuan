@@ -65,6 +65,8 @@ Popout {
                () => run(["scripts/network", "share"])),
         action("displays", "Displays", "󰍹", "monitor screen output resolution scale rotate refresh rate arrange mirror vrr",
                () => openPopup("displays")),
+        action("lock", "Lock screen", "󰌾", "lock password away afk matrix",
+               () => run(["scripts/lock"])),
         action("screen-off", "Screen off", "󰌢", "monitor display blank",
                () => run(["scripts/screen-off"])),
         // a beat for the launcher to unmap before slurp grabs the screen

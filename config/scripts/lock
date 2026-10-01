@@ -1,0 +1,34 @@
+#!/bin/sh
+# lock — lock the screen (quickshell-lock, its own qs instance).
+#   lock            lock now, in the background; nothing if already locked
+#   lock style      print the background style: rain | blur
+#   lock style X    set it (the next lock uses it)
+# The default style is rain on Butterbian, blur elsewhere.
+C="$(dirname "$(dirname "$(readlink -f "$0")")")"
+P="$C/quickshell-lock"
+
+case "${1:-}" in
+style)
+    if [ -n "${2:-}" ]; then
+        printf '%s\n' "$2" > "$C/lock-style"
+        exit 0
+    fi
+    s=$(cat "$C/lock-style" 2>/dev/null)
+    if [ -z "$s" ]; then
+        if grep -qs '^NAME="Butterbian"' /etc/os-release; then s=rain; else s=blur; fi
+    fi
+    echo "$s"
+    exit 0
+    ;;
+esac
+
+pgrep -f "^qs -p $P" >/dev/null && exit 0
+cd "$HOME" || cd /
+LOCK_STYLE=$("$0" style)
+export LOCK_STYLE
+# detached: swayidle and the bar must not wait for the unlock
+if command -v setsid >/dev/null 2>&1; then
+    setsid -f qs -p "$P" >/dev/null 2>&1
+else
+    qs -p "$P" >/dev/null 2>&1 &
+fi

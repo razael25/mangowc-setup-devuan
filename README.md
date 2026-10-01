@@ -99,6 +99,7 @@ Everything else is stock Debian:
 | `pipewire`                    | Audio                                |
 | `nwg-look`                    | GTK configurator                     |
 | `wlr-randr`                   | The Displays card: mode, scale, rotation, arrangement, kept across restarts and hotplug |
+| `qml6-module-qtquick-effects` | The lock screen's blurred-wallpaper style (without it: the wallpaper dimmed) |
 | `wlsunset`, `power-profiles-daemon`, `brightnessctl` | The command menu's toggles |
 | `network-manager-config-connectivity-debian` | Lets the network icon tell "no internet" and hotel/café sign-in pages from a working connection |
 | `btop`                        | The metrics card's full view         |
@@ -154,6 +155,14 @@ Every change is a trial: keep it within 15 seconds or it reverts, so a
 mode the monitor can't show never leaves you blind. A kept layout is put
 back on every start and whenever a monitor is plugged in.
 
+**Lock screen** (`Super + Ctrl + L`, the power menu, the launcher's Lock
+screen): quickshell again, through the session-lock protocol and PAM, so
+there's no swaylock or gtklock. The background is **Matrix rain** in the
+wallpaper's accent colour (the default on Butterbian) or the **wallpaper
+blurred**; the command menu's "Lock style" tile switches. "Lock on idle"
+there locks 30 seconds before the 15-minute screen-off and before the
+machine sleeps; it's off unless you turn it on.
+
 **Weather** shows a 3-day forecast; its "radar" button swaps in the last
 hour of rain on a dark map, looping, centred on the forecast's location
 (click for the full radar in the browser).
@@ -183,6 +192,7 @@ Super is the mod key. Same muscle memory as the other setups.
 | `Super + \``           | Drop-down terminal (scratchpad)        |
 | `Super + Space`        | App launcher                           |
 | `Super + /`            | Keybind cheatsheet                     |
+| `Super + Ctrl + L`     | Lock screen                            |
 | `Super + Q`            | Close window                           |
 | `Super + Shift + Q`    | Quit mango                             |
 | `Super + Shift + R`    | Reload config (live)                   |
@@ -259,9 +269,12 @@ still shows you which window is live. The opacity slider needs mangowc
 │   ├── displays          # wlr-randr for the Displays card: list | save | apply | forget
 │   ├── radar             # map + rain tiles for the weather card's radar
 │   ├── launcher          # opens the app grid (rofi if the bar is down)
+│   ├── lock              # the lock screen (quickshell-lock) and its style
+│   ├── idle              # swayidle policy: screen off, optional lock
 │   ├── power / network
 ├── quickshell/           # the bar (see its README)
 ├── quickshell-network/   # the network app (its own qs instance)
+├── quickshell-lock/      # the lock screen (its own qs instance)
 ├── rofi/                 # config / power .rasi (colors theme-managed)
 ├── dunst/                # dunstrc (theme-managed)
 ├── polybar/colors.ini    # the live palette the bar watches (name is historical)
