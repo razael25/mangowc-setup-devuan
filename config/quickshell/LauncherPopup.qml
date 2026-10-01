@@ -138,7 +138,52 @@ Popout {
     function action(id, name, glyph, keywords, fn) {
         return { isAction: true, id: "action:" + id, name: name, glyph: glyph,
                  keywords: keywords.split(" "), genericName: "", command: [],
-                 categories: [], run: fn }
+                 categories: [], run: fn, family: familyOf(id) }
+    }
+
+    // Action tiles are tinted by family so a grid of them scans like app
+    // icons do, but the tints come from the theme: the accent's hue
+    // turned by a fixed amount per family (and the alert colour for the
+    // ones that end your session), so they re-colour with the wallpaper.
+    readonly property var families: [
+        { key: "system",  label: "System" },
+        { key: "capture", label: "Screenshots" },
+        { key: "network", label: "Network" },
+        { key: "scene",   label: "Wallpaper & weather" },
+        { key: "power",   label: "Session" }
+    ]
+    // the Actions tab at rest: one family per row group, a label over
+    // each, rows padded with blank cells so a group always starts a row
+    readonly property bool groupedView: chip === 3 && query === ""
+    function grouped(acts) {
+        const out = []
+        for (const f of families) {
+            const items = acts.filter(a => a.family === f.key)
+                              .sort((a, b) => a.name.localeCompare(b.name))
+            if (!items.length)
+                continue
+            items[0] = Object.assign({}, items[0], { section: f.label })
+            out.push(...items)
+            while (out.length % columns)
+                out.push({ spacer: true, isAction: false, id: "spacer:" + out.length, name: "" })
+        }
+        return out
+    }
+    function familyOf(id) {
+        if (/^(power|lock|screen-off)$/.test(id)) return "power"
+        if (/^screenshot/.test(id)) return "capture"
+        if (/^(network|share-wifi)$/.test(id)) return "network"
+        if (/^(weather|wallpaper)$/.test(id)) return "scene"
+        return "system"
+    }
+    function tint(family) {
+        if (family === "power")
+            return Theme.alert
+        const turn = { system: 0, capture: 150, network: 210, scene: 300 }[family] ?? 0
+        const a = Theme.accent
+        return Qt.hsla((a.hslHue + turn / 360) % 1,
+                       Math.max(a.hslSaturation, 0.45),
+                       Math.min(Math.max(a.hslLightness, 0.52), 0.66), 1)
     }
 
     function openPopup(target) {
@@ -182,7 +227,11 @@ Popout {
         let pool = list
         if (chipIndex === 1) pool = pool.filter(a => !isSettings(a))
         else if (chipIndex === 2) pool = pool.filter(a => isSettings(a))
-        else if (chipIndex === 3) pool = acts
+        else if (chipIndex === 3) {
+            if (!words.length)
+                return grouped(acts)
+            pool = acts
+        }
         // All: apps only until you type, so the resting grid stays apps
         else if (words.length) pool = pool.concat(acts)
 
@@ -210,6 +259,8 @@ Popout {
     }
 
     function launch(a) {
+        if (!a || a.spacer)
+            return
         if (!a)
             return
         remember(a.id)
@@ -237,7 +288,14 @@ Popout {
     function move(d) {
         if (!results.length)
             return
-        selected = Math.max(0, Math.min(results.length - 1, selected + d))
+        let i = Math.max(0, Math.min(results.length - 1, selected + d))
+        // over the blank cells that pad a group, in the direction of travel
+        const step = d < 0 ? -1 : 1
+        while (i >= 0 && i < results.length && results[i].spacer)
+            i += step
+        if (i < 0 || i >= results.length)
+            return
+        selected = i
         grid.positionViewAtIndex(selected, GridView.Contain)
     }
 
@@ -374,7 +432,7 @@ Popout {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         cellWidth: root.cellW
-        cellHeight: root.cellH
+        cellHeight: root.groupedView ? root.cellH + 18 : root.cellH
         model: root.results
         currentIndex: root.selected
         highlightFollowsCurrentItem: false
@@ -384,12 +442,29 @@ Popout {
             required property var modelData
             required property int index
             readonly property bool current: root.selected === index
+            readonly property bool blank: !!cell.modelData.spacer
             width: root.cellW
-            height: root.cellH
+            height: grid.cellHeight
+            visible: !blank
+
+            // the group's label, over its first row
+            Text {
+                visible: !!cell.modelData.section
+                x: 6
+                y: 2
+                width: root.columns * root.cellW - 12
+                text: cell.modelData.section ?? ""
+                color: Qt.alpha(Theme.fg, 0.45)
+                font.family: Theme.fontFamily
+                font.pixelSize: 10
+                font.bold: true
+                font.letterSpacing: 1
+            }
 
             Rectangle {
                 anchors.fill: parent
                 anchors.margins: 3
+                anchors.topMargin: root.groupedView ? 19 : 3
                 radius: 10
                 color: cell.current ? Qt.alpha(Theme.fg, 0.12) : "transparent"
                 border.width: cell.current ? 1 : 0
@@ -401,7 +476,7 @@ Popout {
             Item {
                 id: icon
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: 12
+                y: root.groupedView ? 28 : 12
                 width: 44
                 height: 44
 
@@ -419,15 +494,16 @@ Popout {
             Rectangle {
                 anchors.fill: icon
                 visible: !!cell.modelData.isAction
+                readonly property color ink: root.tint(cell.modelData.family)
                 radius: 10
-                color: Qt.alpha(Theme.accent, 0.16)
+                color: Qt.alpha(ink, 0.16)
                 border.width: 1
-                border.color: Qt.alpha(Theme.accent, 0.35)
+                border.color: Qt.alpha(ink, 0.35)
 
                 Text {
                     anchors.centerIn: parent
                     text: cell.modelData.glyph ?? ""
-                    color: Theme.accent
+                    color: parent.ink
                     font.family: Theme.fontFamily
                     font.pixelSize: 22
                 }
