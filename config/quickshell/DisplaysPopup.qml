@@ -337,6 +337,7 @@ Popout {
         readonly property real k: Math.min((width - 40) / bw, (height - 60) / bh, 0.18)
         readonly property real ox: (width - bw * k) / 2
         readonly property real oy: 8 + (height - 44 - bh * k) / 2
+        clip: true
 
         Rectangle {
             anchors.fill: parent
@@ -416,11 +417,13 @@ Popout {
                     id: monMa
                     anchors.fill: parent
                     cursorShape: root.live.length > 1 ? Qt.OpenHandCursor : Qt.PointingHandCursor
+                    // past the stage's edges too: the layout fills the
+                    // stage, so "left of the first screen" starts outside it
                     drag.target: root.live.length > 1 && root.keepLeft === 0 ? mon : undefined
-                    drag.minimumX: 0
-                    drag.minimumY: 0
-                    drag.maximumX: canvas.width - mon.width
-                    drag.maximumY: canvas.height - mon.height
+                    drag.minimumX: -mon.width + 20
+                    drag.minimumY: -mon.height + 20
+                    drag.maximumX: canvas.width - 20
+                    drag.maximumY: canvas.height - 20
                     onPressed: { root.sel = mon.index; root._picked = true }
                     onReleased: {
                         if (drag.active)
