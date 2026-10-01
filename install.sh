@@ -103,6 +103,7 @@ fi
 # awww: animated wallpaper daemon (butterrepo; formerly swww)
 PACKAGES_CORE=(
     mangowc xwayland awww
+    build-essential
 )
 
 # quickshell pulls its qml6 modules in through Recommends

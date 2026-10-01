@@ -94,6 +94,7 @@ Everything else is stock Debian:
 | `swayidle` + `wlopm`          | Monitor power-off after 15 min idle  |
 | `xdg-desktop-portal-wlr/gtk`  | Screen sharing, file dialogs         |
 | `x11-xserver-utils`           | `xhost`, so password-prompted root apps (Timeshift, GParted) can open a window |
+| `build-essential`             | Compiler toolchain, as in the other setups (nothing here builds from source, but a desktop should be able to) |
 | `kitty`                       | Terminal (via butterscripts)         |
 | `thunar` + plugins            | File manager                         |
 | `pipewire`                    | Audio                                |
