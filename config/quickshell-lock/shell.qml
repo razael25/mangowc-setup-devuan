@@ -15,6 +15,12 @@ import Quickshell.Services.Pam
 ShellRoot {
     id: root
 
+    // a running lock must survive its own files changing (an update, a
+    // git pull): no live reload here — the compositor keeps the session
+    // locked if the lock process dies, and that's a black screen until
+    // scripts/lock is run again
+    Component.onCompleted: Quickshell.watchFiles = false
+
     readonly property string style: Quickshell.env("LOCK_STYLE") === "blur" ? "blur" : "rain"
     readonly property string wallpaper: Quickshell.env("LOCK_WALLPAPER")   // scripts/lock finds it
     property bool checking: false
@@ -121,8 +127,8 @@ ShellRoot {
                     border.width: 2
                     border.color: root.wrong ? Theme.alert
                                 : root.checking ? Qt.alpha(Theme.accent, 0.5) : Theme.accent
-                    transform: Translate { x: box.shake }
                     property real shake: 0
+                    transform: Translate { x: box.shake }
 
                     Behavior on border.color { ColorAnimation { duration: 150 } }
 
