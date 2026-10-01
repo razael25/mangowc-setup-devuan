@@ -4,10 +4,12 @@ import Quickshell.Io
 
 // Pending-updates indicator, presence-gated: hidden at zero, an icon +
 // count pill when apt has upgrades. The check is root-free and lock-free
-// (simulated dist-upgrade), polled hourly plus shortly after the upgrade
-// terminal is opened; middle click re-checks now. The count is only as
-// fresh as the last `apt update` — the upgrade terminal runs one, and
-// APT::Periodic::Update-Package-Lists "1" makes the system do it daily.
+// (simulated dist-upgrade), run hourly — this is Debian, updates trickle
+// in — and the moment the upgrade terminal finishes; middle click
+// re-checks now (after an upgrade run from your own terminal, say). The
+// count is only as fresh as the last `apt update` — the upgrade terminal
+// runs one, and APT::Periodic::Update-Package-Lists "1" makes the system
+// do it daily.
 BarModule {
     id: root
 
@@ -34,12 +36,12 @@ BarModule {
         onTriggered: checkProc.running = true
     }
 
-    // the upgrade runs in a detached terminal — recheck a few minutes
-    // after it was opened so the pill clears without waiting out the hour
-    Timer {
-        id: recheck
-        interval: 5 * 60 * 1000
-        onTriggered: checkProc.running = true
+    // the upgrade terminal says when it's done (below), so the pill
+    // clears the moment apt finishes; nothing polls in between.
+    // Scriptable too: qs -p ~/.config/mango/quickshell ipc call updates check
+    IpcHandler {
+        target: "updates"
+        function check(): void { checkProc.running = true }
     }
 
     onClicked: mouse => {
@@ -48,8 +50,9 @@ BarModule {
         } else {
             Quickshell.execDetached(["kitty", "-e", "sh", "-c",
                 "sudo apt update && sudo apt full-upgrade; " +
-                "printf '\\ndone - press enter to close '; read _"])
-            recheck.restart()
+                "qs -p \"$0\" ipc call updates check >/dev/null 2>&1; " +
+                "printf '\\ndone - press enter to close '; read _",
+                Theme.configDir + "/quickshell"])
         }
     }
 }

@@ -84,7 +84,10 @@ Popout {
                                               Theme.configDir + "/scripts/screenshot"])),
         action("updates", "Check for updates", "󰚰", "upgrade apt packages software",
                () => Quickshell.execDetached(["kitty", "-e", "sh", "-c",
-                   "sudo apt update && apt list --upgradable; printf '\\ndone - press enter to close '; read _"])),
+                   "sudo apt update && apt list --upgradable; " +
+                   "qs -p \"$0\" ipc call updates check >/dev/null 2>&1; " +
+                   "printf '\\ndone - press enter to close '; read _",
+                   Theme.configDir + "/quickshell"])),
         action("restart-bar", "Restart bar", "󰑓", "quickshell panel reload",
                () => run(["scripts/bar", "restart"])),
         action("reload", "Reload config", "󰑐", "window manager wm config.conf",

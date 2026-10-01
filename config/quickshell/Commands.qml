@@ -468,7 +468,9 @@ BarModule {
                     { icon: "󰚰", label: "Check updates",
                       run: () => Quickshell.execDetached(["kitty", "-e", "sh", "-c",
                           "sudo apt update && apt list --upgradable; " +
-                          "printf '\\ndone - press enter to close '; read _"]) },
+                          "qs -p \"$0\" ipc call updates check >/dev/null 2>&1; " +
+                          "printf '\\ndone - press enter to close '; read _",
+                          Theme.configDir + "/quickshell"]) },
                     { icon: "󰍹", label: "Displays",
                       run: () => displays.visible = true },
                     { icon: "󰌌", label: "Keybindings",
