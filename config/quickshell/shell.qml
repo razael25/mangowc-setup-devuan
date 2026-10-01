@@ -17,10 +17,15 @@ ShellRoot {
         running: true
         command: [Theme.configDir + "/scripts/displays", "apply"]
     }
-    // ...and again when a monitor is plugged in or a dock wakes up
+    // ...and again when a monitor is plugged in or a dock wakes up, which
+    // also paints the wallpaper onto the newcomer
+    Process {
+        id: displaysHotplug
+        command: [Theme.configDir + "/scripts/displays", "hotplug"]
+    }
     Connections {
         target: Quickshell
-        function onScreensChanged() { displaysApply.running = true }
+        function onScreensChanged() { displaysHotplug.running = true }
     }
 
     // Displays card's "identify": each output's name, big, for a moment

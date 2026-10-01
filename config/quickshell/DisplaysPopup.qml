@@ -16,6 +16,7 @@ Popout {
     property var orig: []      // as the compositor has it now
     property var before: []    // the layout a trial replaced, for revert
     property int sel: 0
+    property bool _picked: false   // the user chose a tile; keep it across reloads
     property string pick: ""   // the expanded picker: "res" | "rate" | ""
     property bool busy: false
     property int keepLeft: 0   // trial countdown, 0 = none running
@@ -49,7 +50,7 @@ Popout {
         : []
 
     centered: true
-    cardWidth: 780
+    cardWidth: 840
     cardHeight: 500
 
     // scriptable: qs -p ~/.config/mango/quickshell ipc call displays toggle
@@ -62,6 +63,7 @@ Popout {
         if (visible) {
             pick = ""
             status = ""
+            _picked = false
             loader.running = true
         } else {
             Wm.identifyOutputs = false
@@ -108,8 +110,10 @@ Popout {
         }
         orig = clone(list)
         outs = list
-        if (sel >= outs.length)
-            sel = 0
+        if (!_picked || sel >= outs.length) {
+            const here = outs.findIndex(o => root.screen && o.name === root.screen.name)
+            sel = here >= 0 ? here : 0
+        }
     }
 
     // change one field of the selected output — a new array, so the
@@ -326,7 +330,7 @@ Popout {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 76
-        width: 420
+        width: 480
 
         readonly property real bw: Math.max(1, ...root.live.map(o => o.x + root.lw(o)))
         readonly property real bh: Math.max(1, ...root.live.map(o => o.y + root.lh(o)))
@@ -361,15 +365,14 @@ Popout {
 
                 // name and model up top, mode and placement along the
                 // bottom; a small tile keeps just the name
-                readonly property bool roomy: width >= 150 && height >= 80
+                readonly property bool roomy: width >= 140 && height >= 76
                 clip: true
 
                 Column {
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                    anchors.margins: mon.roomy ? 10 : 0
-                    anchors.horizontalCenter: mon.roomy ? undefined : parent.horizontalCenter
-                    anchors.verticalCenter: mon.roomy ? undefined : parent.verticalCenter
+                    anchors.left: mon.roomy ? parent.left : undefined
+                    anchors.top: mon.roomy ? parent.top : undefined
+                    anchors.margins: 10
+                    anchors.centerIn: mon.roomy ? undefined : parent
                     spacing: 2
                     Text {
                         text: mon.modelData.name
@@ -418,7 +421,7 @@ Popout {
                     drag.minimumY: 0
                     drag.maximumX: canvas.width - mon.width
                     drag.maximumY: canvas.height - mon.height
-                    onPressed: root.sel = mon.index
+                    onPressed: { root.sel = mon.index; root._picked = true }
                     onReleased: {
                         if (drag.active)
                             root.place(mon.index, (mon.x - canvas.ox) / canvas.k, (mon.y - canvas.oy) / canvas.k)
@@ -439,7 +442,7 @@ Popout {
                     required property var modelData
                     label: "󰶐  " + modelData.o.name + " · off"
                     active: modelData.i === root.sel
-                    onClicked: root.sel = modelData.i
+                    onClicked: { root.sel = modelData.i; root._picked = true }
                 }
             }
         }

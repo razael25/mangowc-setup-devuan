@@ -5,6 +5,8 @@
 #   displays apply         put the saved layout back (bar start: only the
 #                          outputs that differ, so a restart doesn't modeset)
 #   displays forget        drop the saved layout (mango's config rules again)
+#   displays hotplug       a monitor came or went: apply, then give any
+#                          output showing no wallpaper the current one
 # State file: one output per line —
 #   name<TAB>on|off<TAB>WxH@R<TAB>x,y<TAB>scale<TAB>transform<TAB>vrr(0/1)
 # Outputs that aren't plugged in are skipped, not forgotten, so a laptop's
@@ -22,6 +24,20 @@ save)
     ;;
 forget)
     rm -f "$state"
+    ;;
+hotplug)
+    "$0" apply
+    # awww paints the outputs that exist when it's told; a new one gets
+    # its background colour until told again. No transition: the others
+    # are showing this image already.
+    command -v awww >/dev/null 2>&1 || exit 0
+    img=$(cat "${XDG_CACHE_HOME:-$HOME/.cache}/mango/current_wallpaper" 2>/dev/null)
+    [ -f "$img" ] || img=$(sed -n 's/^exec-once=awww img \(.*\) --resize crop$/\1/p' \
+        "${XDG_CONFIG_HOME:-$HOME/.config}/mango/config.conf" | sed "s|^\$HOME|$HOME|")
+    [ -f "$img" ] || exit 0
+    sleep 1   # let awww see the output first
+    bare=$(awww query 2>/dev/null | sed -n 's/^: \([^:]*\):.*currently displaying: color.*/\1/p' | paste -sd,)
+    [ -n "$bare" ] && exec awww img "$img" --outputs "$bare" --resize crop --transition-type none
     ;;
 apply)
     [ -s "$state" ] || exit 0
@@ -55,7 +71,7 @@ for o in json.load(sys.stdin):
     [ "${#args[@]}" -gt 0 ] && exec wlr-randr "${args[@]}"
     ;;
 *)
-    echo "usage: displays list|save|apply|forget" >&2
+    echo "usage: displays list|save|apply|forget|hotplug" >&2
     exit 2
     ;;
 esac
