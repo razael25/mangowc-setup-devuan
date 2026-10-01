@@ -210,6 +210,22 @@ ShellRoot {
                 style: Text.Outline
                 styleColor: Qt.alpha(Theme.bg, 0.6)
             }
+
+            // and on Butterbian, whose desk this is (scripts/lock sets it)
+            Text {
+                visible: Quickshell.env("LOCK_BRAND") === "butterbian"
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.margins: 24
+                text: "butterbian"
+                color: Qt.alpha(Theme.accent, 0.8)
+                font.family: Theme.fontFamily
+                font.pixelSize: 15
+                font.bold: true
+                font.letterSpacing: 2
+                style: Text.Outline
+                styleColor: Qt.alpha(Theme.bg, 0.6)
+            }
         }
     }
 }

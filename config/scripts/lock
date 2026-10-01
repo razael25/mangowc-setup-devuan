@@ -31,7 +31,9 @@ wall=$(cat "$HOME/.cache/mango/current_wallpaper" 2>/dev/null)
 [ -f "$wall" ] || wall=$(awww query 2>/dev/null | sed -n 's/.*currently displaying: image: //p' | head -n1)
 [ -f "$wall" ] || wall=$(sed -n 's/^exec-once=awww img \(.*\) --resize crop$/\1/p' "$C/config.conf" | sed "s|^\$HOME|$HOME|")
 LOCK_WALLPAPER=$wall
-export LOCK_STYLE LOCK_WALLPAPER
+# the distro's name in the corner, when it's Butterbian
+LOCK_BRAND=$(grep -qs '^NAME="Butterbian"' /etc/os-release && echo butterbian)
+export LOCK_STYLE LOCK_WALLPAPER LOCK_BRAND
 # detached: swayidle and the bar must not wait for the unlock
 if command -v setsid >/dev/null 2>&1; then
     setsid -f qs -p "$P" >/dev/null 2>&1
