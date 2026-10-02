@@ -172,6 +172,23 @@ Popout {
 
         SectionLabel { text: "Bar" }
 
+        Grid {
+            id: barGrid
+            width: parent.width
+            columns: 3
+            spacing: 4
+
+            Repeater {
+                model: [
+                    { icon: "󱂬", label: "Tag icons", active: Theme.tagIcons,
+                      run: () => {
+                          Theme.tagIcons = !Theme.tagIcons
+                          root.persistFile("tag-icons", Theme.tagIcons ? 1 : 0)
+                      } }
+                ]
+                TogglePill { width: (barGrid.width - 8) / 3 }
+            }
+        }
         TweakSlider {
             label: "bar height"
             from: 36; to: 72

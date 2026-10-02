@@ -212,6 +212,55 @@ Singleton {
         if (li >= 0) layoutIndex = li
     }
 
+    // --- which apps sit on which tag (the Tags strip's icons) ---
+    // mmsg streams every client change; grouped per tag, one entry per app
+    // with a count. Runs only while the toggle is on: off, nothing runs.
+
+    property var tagApps: ({})   // tag index -> [{appid, icon, count}]
+    property var _iconCache: ({})
+    function appIcon(appid) {
+        if (_iconCache[appid] !== undefined) return _iconCache[appid]
+        const entry = DesktopEntries.heuristicLookup(appid)
+        const icon = entry?.icon ? Quickshell.iconPath(entry.icon, "application-x-executable") : ""
+        _iconCache[appid] = icon
+        return icon
+    }
+    Process {
+        id: clientsWatch
+        command: [root.ipc, "watch", "all-clients"]
+        running: Theme.tagIcons
+        stdout: SplitParser {
+            onRead: line => root.parseClients(line)
+        }
+        onExited: if (Theme.tagIcons) clientsRetry.restart()
+    }
+    Timer {
+        id: clientsRetry
+        interval: 2000
+        onTriggered: if (Theme.tagIcons) clientsWatch.running = true
+    }
+    Connections {
+        target: Theme
+        function onTagIconsChanged() { if (!Theme.tagIcons) root.tagApps = ({}) }
+    }
+    function parseClients(line) {
+        let j
+        try { j = JSON.parse(line) } catch (e) { return }
+        const perTag = {}
+        for (const c of j.clients ?? []) {
+            if (c.is_scratchpad || c.is_namedscratchpad) continue
+            if (c.monitor && root.monitor && c.monitor !== root.monitor) continue
+            for (const t of c.tags ?? []) {
+                const i = t - 1
+                if (!perTag[i]) perTag[i] = []
+                const hit = perTag[i].find(a => a.appid === c.appid)
+                if (hit) hit.count++
+                else perTag[i].push({ appid: c.appid, icon: appIcon(c.appid), count: 1 })
+            }
+        }
+        tagApps = perTag
+    }
+
     // --- actions ---
 
     function viewTag(i) { dispatch("view," + (i + 1)) }

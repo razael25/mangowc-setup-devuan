@@ -128,6 +128,15 @@ Singleton {
     }
 
     // not part of barStateReady: popups aren't open at start
+    // the Tags strip shows which apps sit on each tag (layout picker toggle)
+    property bool tagIcons: false
+    FileView {
+        path: root.configDir + "/tag-icons"
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: root.tagIcons = text().trim() === "1"
+    }
+
     FileView {
         path: root.configDir + "/popup-scale"
         watchChanges: true

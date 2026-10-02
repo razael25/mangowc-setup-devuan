@@ -1,7 +1,11 @@
 import QtQuick
+import Quickshell.Widgets
 
 // 12 bspwm desktops: focused = wide accent pill, occupied = numbered cell,
 // empty = small dot. Widths and colors animate on every report line.
+// With the "Tag icons" toggle on, an occupied cell also carries the icons
+// of the apps on it (one per app, at most three), so the strip answers
+// "where did I leave Firefox" by itself.
 Item {
     implicitWidth: tagRow.implicitWidth
     implicitHeight: Math.round(22 * Theme.barScale)
@@ -24,8 +28,11 @@ Item {
                 readonly property bool selected: (Wm.seltags & (1 << index)) !== 0
                 readonly property bool occupied: (Wm.occtags & (1 << index)) !== 0
                 readonly property bool urgent: (Wm.urgtags & (1 << index)) !== 0
+                readonly property var apps: Theme.tagIcons ? (Wm.tagApps[index] ?? []).slice(0, 3) : []
+                readonly property int iconPx: Math.round(14 * Theme.barScale)
 
                 width: Math.round((selected ? 30 : occupied ? 22 : 12) * Theme.barScale)
+                       + apps.length * (iconPx + Math.round(3 * Theme.barScale))
                 height: Math.round(22 * Theme.barScale)
                 radius: Math.round(7 * Theme.barScale)
                 anchors.verticalCenter: parent.verticalCenter
@@ -45,16 +52,31 @@ Item {
                     NumberAnimation { to: 1.0; duration: 500; easing.type: Easing.InOutQuad }
                 }
 
-                Txt {
+                Row {
                     anchors.centerIn: parent
+                    spacing: Math.round(3 * Theme.barScale)
                     visible: tag.occupied || tag.selected
-                    text: tag.index + 1
-                    color: tag.urgent ? Theme.bg
-                         : tag.selected ? Theme.selfg
-                         : Qt.alpha(Theme.fg, 0.85)
-                    font.pixelSize: Math.round(12 * Theme.barScale)
-                    font.bold: tag.selected
-                    Behavior on color { ColorAnimation { duration: 180 } }
+
+                    Txt {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: tag.index + 1
+                        color: tag.urgent ? Theme.bg
+                             : tag.selected ? Theme.selfg
+                             : Qt.alpha(Theme.fg, 0.85)
+                        font.pixelSize: Math.round(12 * Theme.barScale)
+                        font.bold: tag.selected
+                        Behavior on color { ColorAnimation { duration: 180 } }
+                    }
+                    Repeater {
+                        model: tag.apps
+                        IconImage {
+                            required property var modelData
+                            anchors.verticalCenter: parent.verticalCenter
+                            implicitSize: tag.iconPx
+                            source: modelData.icon
+                            opacity: tag.selected || tag.urgent ? 1 : 0.85
+                        }
+                    }
                 }
 
                 Rectangle {
