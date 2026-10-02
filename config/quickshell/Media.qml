@@ -16,15 +16,19 @@ BarModule {
     // popup-pinned player; falls back to auto when it disappears
     property var manual: null
 
-    // A player earns the pill by playing. MPRIS can't tell "paused a
-    // moment ago" from "abandoned yesterday" (mpd left paused since before
-    // login, a browser keeping a declined call's player), so the bar keeps
-    // its own note of when each player last played and never shows one it
-    // has not seen play. Among the paused, the most recently played wins.
-    property var lastPlayed: ({})
+    // A player earns the pill by playing, and keeps a claim on it for
+    // idleMinutes after it last did anything (play, pause, change track).
+    // MPRIS can't tell "paused a moment ago" from "abandoned yesterday"
+    // (mpd left paused since before login, a browser keeping a declined
+    // call's player), so the bar keeps its own note per player. Playing
+    // always wins; among the paused, the most recent one still inside its
+    // window — so when a finished call's player times out, the music you
+    // paused to take it comes back.
+    property int idleMinutes: 5
+    property var lastActive: ({})
     property int stamp: 0
     function mark(p) {
-        lastPlayed[p.dbusName] = Date.now()
+        lastActive[p.dbusName] = Date.now()
         stamp++
     }
     Instantiator {
@@ -36,11 +40,16 @@ BarModule {
                 if (modelData.playbackState === MprisPlaybackState.Playing)
                     root.mark(modelData)
             }
-            function onPlaybackStateChanged() {
-                if (modelData.playbackState === MprisPlaybackState.Playing)
-                    root.mark(modelData)
-            }
+            function onPlaybackStateChanged() { root.mark(modelData) }
+            function onTrackTitleChanged() { root.mark(modelData) }
         }
+    }
+    // windows close on their own: look again now and then while paused
+    Timer {
+        running: root.player !== null && !root.playing
+        interval: 30000
+        repeat: true
+        onTriggered: root.stamp++
     }
 
     readonly property var player: {
@@ -48,40 +57,35 @@ BarModule {
         const ps = Mpris.players.values
         if (manual && ps.indexOf(manual) >= 0)
             return manual
-        let best = null, bestAt = -1
+        const now = Date.now()
+        let playingBest = null, playingAt = -1
+        let pausedBest = null, pausedAt = -1
         for (let i = 0; i < ps.length; i++) {
-            if (ps[i].playbackState === MprisPlaybackState.Playing)
-                return ps[i]
-            const at = lastPlayed[ps[i].dbusName] ?? -1
-            if (at > bestAt) {
-                best = ps[i]
-                bestAt = at
+            const p = ps[i]
+            const at = lastActive[p.dbusName] ?? -1
+            if (at < 0)
+                continue
+            if (p.playbackState === MprisPlaybackState.Playing) {
+                if (at > playingAt) {
+                    playingBest = p
+                    playingAt = at
+                }
+            } else if (p.playbackState === MprisPlaybackState.Paused
+                       && now - at < idleMinutes * 60000 && at > pausedAt) {
+                pausedBest = p
+                pausedAt = at
             }
         }
-        return best
+        return playingBest ?? pausedBest
     }
     readonly property bool playing: player !== null
         && player.playbackState === MprisPlaybackState.Playing
 
     // middle-click; cleared when the track or player changes
     property bool dismissed: false
-    onPlayerChanged: {
-        dismissed = false
-        idle = false
-    }
+    onPlayerChanged: dismissed = false
 
-    // A pause is worth showing for a while (you will be back), not for
-    // long: after idleMinutes paused the pill steps aside until that
-    // player plays again or changes track.
-    property int idleMinutes: 5
-    property bool idle: false
-    Timer {
-        running: root.player !== null && !root.playing && !root.idle
-        interval: root.idleMinutes * 60000
-        onTriggered: root.idle = true
-    }
-
-    visible: player !== null && !dismissed && !idle
+    visible: player !== null && !dismissed
         && player.playbackState !== MprisPlaybackState.Stopped
 
     // MPRIS reports artists as an array, but some players hand over a
@@ -110,9 +114,7 @@ BarModule {
         function onTrackTitleChanged() {
             root.pos = root.player?.position ?? 0
             root.dismissed = false
-            root.idle = false
         }
-        function onPlaybackStateChanged() { root.idle = false }
         function onPositionChanged() { root.pos = root.player?.position ?? 0 }
     }
 
