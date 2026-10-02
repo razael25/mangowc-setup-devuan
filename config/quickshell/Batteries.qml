@@ -128,10 +128,14 @@ Singleton {
     }
 
     // --- low-battery warning, once per drop ---
+    // The laptop gets a second, last call at 5%: the 15% one is easy to
+    // dismiss and forget.
 
     property var _warned: ({})
+    property var _warnedEmpty: ({})
     function warnLow() {
         const next = {}
+        const nextEmpty = {}
         for (const d of devices) {
             if (isLow(d) && !d.charging) {
                 next[d.path] = true
@@ -140,8 +144,16 @@ Singleton {
                         "-u", d.laptop ? "critical" : "normal", "-i", "battery-caution",
                         d.name + " battery low", charge(d) + " left"])
             }
+            if (d.laptop && !d.charging && d.pct >= 0 && d.pct <= 5) {
+                nextEmpty[d.path] = true
+                if (!_warnedEmpty[d.path])
+                    Quickshell.execDetached(["notify-send", "-a", "quickshell",
+                        "-u", "critical", "-i", "battery-empty",
+                        "Battery almost empty", charge(d) + " left — plug in now"])
+            }
         }
         _warned = next
+        _warnedEmpty = nextEmpty
     }
 
     // --- power saver on a low laptop battery ---
