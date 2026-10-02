@@ -29,9 +29,24 @@ BarModule {
 
     // middle-click; cleared when the track or player changes
     property bool dismissed: false
-    onPlayerChanged: dismissed = false
+    onPlayerChanged: {
+        dismissed = false
+        idle = false
+    }
 
-    visible: player !== null && !dismissed
+    // A pause is worth showing for a while (you will be back), not for
+    // days: mpd left paused, or a browser keeping a finished call's player
+    // around. After idleMinutes paused the pill steps aside until that
+    // player plays again or changes track.
+    property int idleMinutes: 5
+    property bool idle: false
+    Timer {
+        running: root.player !== null && !root.playing && !root.idle
+        interval: root.idleMinutes * 60000
+        onTriggered: root.idle = true
+    }
+
+    visible: player !== null && !dismissed && !idle
         && player.playbackState !== MprisPlaybackState.Stopped
 
     // MPRIS reports artists as an array, but some players hand over a
@@ -60,7 +75,9 @@ BarModule {
         function onTrackTitleChanged() {
             root.pos = root.player?.position ?? 0
             root.dismissed = false
+            root.idle = false
         }
+        function onPlaybackStateChanged() { root.idle = false }
         function onPositionChanged() { root.pos = root.player?.position ?? 0 }
     }
 
