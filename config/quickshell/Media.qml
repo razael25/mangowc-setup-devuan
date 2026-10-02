@@ -15,14 +15,50 @@ BarModule {
 
     // popup-pinned player; falls back to auto when it disappears
     property var manual: null
+
+    // A player earns the pill by playing. MPRIS can't tell "paused a
+    // moment ago" from "abandoned yesterday" (mpd left paused since before
+    // login, a browser keeping a declined call's player), so the bar keeps
+    // its own note of when each player last played and never shows one it
+    // has not seen play. Among the paused, the most recently played wins.
+    property var lastPlayed: ({})
+    property int stamp: 0
+    function mark(p) {
+        lastPlayed[p.dbusName] = Date.now()
+        stamp++
+    }
+    Instantiator {
+        model: Mpris.players.values
+        delegate: Connections {
+            required property var modelData
+            target: modelData
+            Component.onCompleted: {
+                if (modelData.playbackState === MprisPlaybackState.Playing)
+                    root.mark(modelData)
+            }
+            function onPlaybackStateChanged() {
+                if (modelData.playbackState === MprisPlaybackState.Playing)
+                    root.mark(modelData)
+            }
+        }
+    }
+
     readonly property var player: {
+        void stamp
         const ps = Mpris.players.values
         if (manual && ps.indexOf(manual) >= 0)
             return manual
-        for (let i = 0; i < ps.length; i++)
+        let best = null, bestAt = -1
+        for (let i = 0; i < ps.length; i++) {
             if (ps[i].playbackState === MprisPlaybackState.Playing)
                 return ps[i]
-        return ps.length > 0 ? ps[0] : null
+            const at = lastPlayed[ps[i].dbusName] ?? -1
+            if (at > bestAt) {
+                best = ps[i]
+                bestAt = at
+            }
+        }
+        return best
     }
     readonly property bool playing: player !== null
         && player.playbackState === MprisPlaybackState.Playing
@@ -35,8 +71,7 @@ BarModule {
     }
 
     // A pause is worth showing for a while (you will be back), not for
-    // days: mpd left paused, or a browser keeping a finished call's player
-    // around. After idleMinutes paused the pill steps aside until that
+    // long: after idleMinutes paused the pill steps aside until that
     // player plays again or changes track.
     property int idleMinutes: 5
     property bool idle: false
