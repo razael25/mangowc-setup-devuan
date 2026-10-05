@@ -42,16 +42,18 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell-popup"
     WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
-    // anchor's position inside the bar window == on-screen position, since
-    // the bar is anchored to the top edge and this overlay covers the output
+    // where the anchor sits on its own output. mapToGlobal answers in the
+    // layout's coordinates, which include the output's position: with a
+    // second monitor to the left, everything landed that monitor's width
+    // too far right. This overlay covers one output, so take its origin off.
     property real ax: 0
     property real ay: 0
 
     onVisibleChanged: {
         if (visible && anchorItem) {
             const p = anchorItem.mapToGlobal(0, 0)
-            ax = p.x
-            ay = p.y
+            ax = p.x - (screen ? screen.x : 0)
+            ay = p.y - (screen ? screen.y : 0)
             inner.forceActiveFocus()
             enterAnim.restart()
         }
