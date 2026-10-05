@@ -9,6 +9,12 @@ import Quickshell.Io
 // No pywal/wallust needed — quickshell is the color engine.
 Popout {
     id: root
+    ipcNames: ["wallpapers"]
+    function ipc(fn, arg) {
+        if (fn === "toggle") root.toggle()
+        else if (fn === "random") root.applyRandom()
+        else if (fn === "set") root.apply(arg)
+    }
 
     cardWidth: 176 * 3 + 2 * cardPadding
     cardHeight: 4 * 103 + 2 * cardPadding
@@ -35,14 +41,6 @@ Popout {
         if (!visible)
             visible = true // canvas only renders inside a visible window
         canvas.loadImage("file://" + path)
-    }
-
-    // sxhkd entry point: qs -p ~/.config/bspwm/quickshell ipc call wallpapers toggle
-    IpcHandler {
-        target: "wallpapers"
-        function toggle(): void { root.toggle() }
-        function random(): void { root.applyRandom() }
-        function set(path: string): void { root.apply(path) }
     }
 
     property var _found: []

@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 
 // Current layout as its nerd-font glyph — the same symbols dwm's retired
 // native bar used (layouts[] in config.h). Scroll cycles layouts, click
@@ -9,11 +10,12 @@ BarModule {
     // lets Bar.qml's right-click-on-empty-bar toggle the same popup
     property alias pickerVisible: picker.visible
 
-    icon: Wm.layouts[Wm.layoutIndex].glyph
+    readonly property string mon: QsWindow.window?.screen?.name ?? ""
+    icon: Wm.layouts[Wm.of(mon).layoutIndex].glyph
     iconColor: Theme.fg
 
     onClicked: picker.visible = !picker.visible
-    onScrolled: dir => Wm.cycleLayout(dir)
+    onScrolled: dir => Wm.cycleLayout(dir, mon)
 
     LayoutPicker {
         id: picker

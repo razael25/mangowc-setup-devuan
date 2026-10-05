@@ -38,6 +38,27 @@ PanelWindow {
         Behavior on color { ColorAnimation { duration: 400 } }
         Behavior on border.color { ColorAnimation { duration: 400 } }
 
+        // A portrait monitor or a small laptop panel cannot hold every
+        // pill. When the two clusters would run into each other, the pills
+        // that only repeat what another window shows step aside: media
+        // first, then the CPU/RAM readout. Measured, not guessed: what the
+        // rest needs is summed without those two, so hiding one cannot
+        // change the answer and flip it back.
+        readonly property real restWidth: {
+            let w = leftCluster.width + 56
+            const kids = rightCluster.children
+            for (let i = 0; i < kids.length; i++) {
+                const k = kids[i]
+                if (k !== media && k !== metrics && k.visible)
+                    w += k.width + rightCluster.spacing
+            }
+            return w
+        }
+        readonly property real metricsNeed: metrics.implicitWidth + rightCluster.spacing
+        readonly property real mediaNeed: media.implicitWidth + rightCluster.spacing
+        readonly property bool fitsMetrics: restWidth + metricsNeed <= width
+        readonly property bool fitsMedia: restWidth + metricsNeed + mediaNeed <= width
+
         // right-click empty bar = the layout/tweaks picker (same popup
         // as clicking the layout button); declared before the clusters
         // so module mouse areas stack above it
@@ -79,9 +100,9 @@ PanelWindow {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 4
 
-            Media {}
+            Media { id: media; allowed: panel.fitsMedia }
             Weather {}
-            Metrics {}
+            Metrics { id: metrics; visible: panel.fitsMetrics }
             Volume {}
             Network {}
             Updates {}

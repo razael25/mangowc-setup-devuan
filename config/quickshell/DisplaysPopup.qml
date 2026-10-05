@@ -11,6 +11,7 @@ import Quickshell.Io
 // Drag the diagram to arrange; edges snap to their neighbours.
 Popout {
     id: root
+    ipcNames: ["displays"]
 
     property var outs: []      // editable {name, desc, on, w, h, r, x, y, scale, transform, vrr, modes}
     property var orig: []      // as the compositor has it now
@@ -52,12 +53,6 @@ Popout {
     centered: true
     cardWidth: 840
     cardHeight: 500
-
-    // scriptable: qs -p ~/.config/mango/quickshell ipc call displays toggle
-    IpcHandler {
-        target: "displays"
-        function toggle(): void { root.visible = !root.visible }
-    }
 
     onVisibleChanged: {
         if (visible) {

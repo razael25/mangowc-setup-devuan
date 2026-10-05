@@ -17,6 +17,7 @@ import Quickshell.Io
 // never the desktop's own: the shared list below plus Wm.sessionProcs.
 Popout {
     id: root
+    ipcNames: ["metrics"]
 
     property var groups: []        // every program: {name, count, cpu, rss, pids, killable}
     property string sortBy: "cpu"
@@ -50,12 +51,6 @@ Popout {
 
     cardWidth: 360
     cardHeight: col.implicitHeight + 2 * cardPadding
-
-    // scriptable: qs -p ~/.config/mango/quickshell ipc call metrics toggle
-    IpcHandler {
-        target: "metrics"
-        function toggle(): void { root.visible = !root.visible }
-    }
 
     onVisibleChanged: {
         disarm()

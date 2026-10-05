@@ -10,6 +10,7 @@ import Quickshell.Io
 // config format and prints the same rows (section, keys, label, line).
 Popout {
     id: root
+    ipcNames: ["keybinds"]
 
     property var rows: []   // {section, keys: [["Super", "Q"], ...], desc, line}
     property string query: ""
@@ -29,12 +30,6 @@ Popout {
     cardWidth: Math.min(1560, fitWidth - 64)
     cardHeight: Math.min(searchBox.height + 14 + fullHeight + 2 * cardPadding,
                          fitHeight * 0.8)
-
-    // scriptable: qs -p ~/.config/mango/quickshell ipc call keybinds toggle
-    IpcHandler {
-        target: "keybinds"
-        function toggle(): void { root.visible = !root.visible }
-    }
 
     onVisibleChanged: {
         if (!visible)

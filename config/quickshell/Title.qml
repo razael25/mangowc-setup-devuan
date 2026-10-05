@@ -1,8 +1,10 @@
 import QtQuick
+import Quickshell
 
-// Focused window title, centered, quietly muted so it never fights the tags.
+// This output's focused window title, centered, quietly muted so it never
+// fights the tags.
 Txt {
-    text: Wm.title
+    text: Wm.of(QsWindow.window?.screen?.name ?? "").title
     color: Qt.alpha(Theme.fg, 0.75)
     font.pixelSize: Theme.fontSize
     elide: Text.ElideRight

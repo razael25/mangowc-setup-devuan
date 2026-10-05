@@ -48,7 +48,10 @@ BarModule {
     // a dismissed player that starts playing elsewhere takes the pill back
     onPlayerChanged: if (player && playing) undismiss(player)
 
-    visible: player !== null && !dismissed[player.dbusName]
+    // false on a bar too narrow for it (Bar.qml)
+    property bool allowed: true
+
+    visible: allowed && player !== null && !dismissed[player.dbusName]
         && player.playbackState !== MprisPlaybackState.Stopped
 
     // MPRIS reports artists as an array, but some players hand over a

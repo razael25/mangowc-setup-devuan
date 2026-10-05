@@ -15,15 +15,10 @@ import Quickshell.Services.Pipewire
 // else show here too.
 Popout {
     id: root
+    ipcNames: ["volume"]
 
     cardWidth: 340
     cardHeight: col.implicitHeight + 2 * cardPadding
-
-    // scriptable open/close: qs -p ~/.config/mango/quickshell ipc call volume toggle
-    IpcHandler {
-        target: "volume"
-        function toggle(): void { root.visible = !root.visible }
-    }
 
     // Filters use only what PipeWire announces up front (sink/stream, node
     // name): a node's audio and properties arrive after it's bound, and a

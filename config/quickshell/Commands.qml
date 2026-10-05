@@ -249,6 +249,7 @@ BarModule {
 
     Popout {
         id: menu
+        ipcNames: ["commands"]
         anchorItem: root
         cardWidth: 350
         cardHeight: col.implicitHeight + 2 * cardPadding
@@ -256,12 +257,6 @@ BarModule {
         onVisibleChanged: if (visible) {
             stateProc.running = true
             Batteries.refresh()
-        }
-
-        // scriptable open/close: qs -p ~/.config/suckless/quickshell ipc call commands toggle
-        IpcHandler {
-            target: "commands"
-            function toggle(): void { menu.visible = !menu.visible }
         }
 
         Column {

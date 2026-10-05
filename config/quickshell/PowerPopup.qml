@@ -9,6 +9,7 @@ import Quickshell.Io
 // through Wm.logout(); everything else is the same on every setup.
 Popout {
     id: root
+    ipcNames: ["power"]
 
     property int selected: 0
     property int armed: -1
@@ -29,12 +30,6 @@ Popout {
     centered: true
     cardWidth: 260
     cardHeight: rows.implicitHeight + 2 * cardPadding
-
-    // scriptable: qs -p ~/.config/mango/quickshell ipc call power toggle
-    IpcHandler {
-        target: "power"
-        function toggle(): void { root.visible = !root.visible }
-    }
 
     onVisibleChanged: {
         if (!visible)

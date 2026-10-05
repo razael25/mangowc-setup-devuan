@@ -39,9 +39,11 @@ BarModule {
     // the upgrade terminal says when it's done (below), so the pill
     // clears the moment apt finishes; nothing polls in between.
     // Scriptable too: qs -p ~/.config/mango/quickshell ipc call updates check
-    IpcHandler {
-        target: "updates"
-        function check(): void { checkProc.running = true }
+    Connections {
+        target: BarIpc
+        function onCall(target, fn, arg) {
+            if (target === "updates" && fn === "check") checkProc.running = true
+        }
     }
 
     onClicked: mouse => {

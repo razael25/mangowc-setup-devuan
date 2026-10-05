@@ -13,6 +13,11 @@ import Quickshell.Io
 // (RadarView); the card grows to fit and comes back when you leave.
 Popout {
     id: root
+    ipcNames: ["weather"]
+    function ipc(fn, arg) {
+        if (fn === "toggle") root.visible = !root.visible
+        else if (fn === "radar") { root.visible = true; root.radar = true }
+    }
 
     property string condition: ""
     property string feels: ""
@@ -34,13 +39,6 @@ Popout {
 
     cardWidth: radar ? 420 : 300
     cardHeight: radar ? 380 : 268
-
-    // scriptable: qs -p ~/.config/mango/quickshell ipc call weather toggle
-    IpcHandler {
-        target: "weather"
-        function toggle(): void { root.visible = !root.visible }
-        function radar(): void { root.visible = true; root.radar = true }
-    }
 
     onVisibleChanged: {
         if (visible)

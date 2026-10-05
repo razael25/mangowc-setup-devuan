@@ -15,22 +15,11 @@ import Quickshell.Io
 // Theme.qml watches.
 Popout {
     id: root
+    ipcNames: ["layouts", "tweaks"]
+    readonly property string mon: screen ? screen.name : ""
 
     cardWidth: 340
     cardHeight: col.implicitHeight + 2 * cardPadding
-
-    // scriptable open/close: qs -p ~/.config/suckless/quickshell ipc call layouts toggle
-    IpcHandler {
-        target: "layouts"
-        function toggle(): void { root.visible = !root.visible }
-    }
-    // `tweaks` opens the same popup here (kept for cross-port parity:
-    // bspwm's tweaks live in its picker too, and Bar.qml's right-click
-    // uses this popup since BarTweaks folded in)
-    IpcHandler {
-        target: "tweaks"
-        function toggle(): void { root.visible = !root.visible }
-    }
 
     function persistFile(name, v) {
         Quickshell.execDetached(["sh", "-c",
@@ -58,7 +47,7 @@ Popout {
                     id: tile
                     required property var modelData
                     required property int index
-                    readonly property bool current: Wm.layoutIndex === index
+                    readonly property bool current: Wm.of(root.mon).layoutIndex === index
 
                     width: (layoutGrid.width - 8) / 3
                     height: 52
@@ -92,7 +81,7 @@ Popout {
                         id: tileMa
                         anchors.fill: parent
                         hoverEnabled: true
-                        onClicked: Wm.setLayout(tile.index)
+                        onClicked: Wm.setLayout(tile.index, root.mon)
                     }
                 }
             }
@@ -124,7 +113,7 @@ Popout {
             suffix: "%"
             applyFn: v => Wm.setMfact(v)
             persistFn: v => {}   // session state, nothing to persist
-            enabled: Wm.layouts[Wm.layoutIndex].mfact
+            enabled: Wm.layouts[Wm.of(root.mon).layoutIndex].mfact
             opacity: enabled ? 1 : 0.35
         }
         TweakSlider {
@@ -133,7 +122,7 @@ Popout {
             value: Wm.nmaster
             applyFn: v => Wm.setNmaster(v)
             persistFn: v => {}   // session state, nothing to persist
-            enabled: Wm.layouts[Wm.layoutIndex].nmaster
+            enabled: Wm.layouts[Wm.of(root.mon).layoutIndex].nmaster
             opacity: enabled ? 1 : 0.35
         }
 

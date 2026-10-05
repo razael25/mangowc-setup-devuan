@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Quickshell.Widgets
 
 // 12 bspwm desktops: focused = wide accent pill, occupied = numbered cell,
@@ -7,11 +8,17 @@ import Quickshell.Widgets
 // of the apps on it (one per app, at most three), so the strip answers
 // "where did I leave Firefox" by itself.
 Item {
+    id: strip
+    // this bar's output: its tags, not the focused monitor's
+    readonly property string mon: QsWindow.window?.screen?.name ?? ""
+    readonly property var st: Wm.of(mon)
+    readonly property var monApps: Wm.tagApps[mon] ?? ({})
+
     implicitWidth: tagRow.implicitWidth
     implicitHeight: Math.round(22 * Theme.barScale)
 
     WheelHandler {
-        onWheel: ev => Wm.cycleTag(ev.angleDelta.y > 0 ? -1 : 1)
+        onWheel: ev => Wm.cycleTag(ev.angleDelta.y > 0 ? -1 : 1, strip.mon)
     }
 
     Row {
@@ -20,15 +27,15 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
 
         Repeater {
-            model: Wm.tagCount
+            model: strip.st.tagCount
 
             Rectangle {
                 id: tag
                 required property int index
-                readonly property bool selected: (Wm.seltags & (1 << index)) !== 0
-                readonly property bool occupied: (Wm.occtags & (1 << index)) !== 0
-                readonly property bool urgent: (Wm.urgtags & (1 << index)) !== 0
-                readonly property var apps: Theme.tagIcons ? (Wm.tagApps[index] ?? []).slice(0, 3) : []
+                readonly property bool selected: (strip.st.seltags & (1 << index)) !== 0
+                readonly property bool occupied: (strip.st.occtags & (1 << index)) !== 0
+                readonly property bool urgent: (strip.st.urgtags & (1 << index)) !== 0
+                readonly property var apps: Theme.tagIcons ? (strip.monApps[index] ?? []).slice(0, 3) : []
                 readonly property int iconPx: Math.round(14 * Theme.barScale)
 
                 width: Math.round((selected ? 30 : occupied ? 22 : 12) * Theme.barScale)
@@ -93,9 +100,9 @@ Item {
                     acceptedButtons: Qt.LeftButton | Qt.MiddleButton
                     onClicked: m => {
                         if (m.button === Qt.MiddleButton)
-                            Wm.sendToTag(tag.index)
+                            Wm.sendToTag(tag.index, strip.mon)
                         else
-                            Wm.viewTag(tag.index)
+                            Wm.viewTag(tag.index, strip.mon)
                     }
                 }
             }

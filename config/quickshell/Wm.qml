@@ -18,6 +18,12 @@ Singleton {
     property int tagCount: 9
     property string title: ""
     property string monitor: ""     // focused output name (dispatch target)
+
+    // Tags are per monitor in mango, so every output has its own state and
+    // each bar shows its own (the properties above are the focused one's).
+    property var mons: ({})   // name -> {seltags, occtags, urgtags, tagCount, title, layoutIndex}
+    readonly property var _none: ({ seltags: 1, occtags: 0, urgtags: 0, tagCount: 9, title: "", layoutIndex: 0 })
+    function of(name) { return mons[name] ?? mons[monitor] ?? _none }
     property bool identifyOutputs: false   // Displays card: name on every screen
 
     readonly property string ipc: Theme.configDir + "/scripts/mango-ipc"
@@ -102,9 +108,9 @@ Singleton {
         dispatch("setoption,unfocused_opacity," + (pct / 100).toFixed(2))
     }
 
-    function setLayout(i) { dispatch("setlayout," + layoutIds[i]) }
-    function cycleLayout(dir) {
-        setLayout(((layoutIndex + dir) % layouts.length + layouts.length) % layouts.length)
+    function setLayout(i, mon) { dispatchOn(mon, "setlayout," + layoutIds[i]) }
+    function cycleLayout(dir, mon) {
+        setLayout(((of(mon).layoutIndex + dir) % layouts.length + layouts.length) % layouts.length, mon)
     }
     function applyGaps(v) {
         // "window gap" = inner gaps
@@ -191,32 +197,43 @@ Singleton {
     function parse(line) {
         let j
         try { j = JSON.parse(line) } catch (e) { return }
-        const mons = j.monitors ?? []
-        if (mons.length === 0) return
-        let m = mons.find(x => x.active) ?? mons[0]
-        monitor = m.name ?? ""
-        let sel = 0, occ = 0, urg = 0
-        const tags = m.tags ?? []
-        for (const t of tags) {
-            const bit = 1 << ((t.index ?? 1) - 1)
-            if (t.is_active) sel |= bit
-            if ((t.client_count ?? 0) > 0) occ |= bit
-            if (t.is_urgent) urg |= bit
+        const list = j.monitors ?? []
+        if (list.length === 0) return
+        const next = {}
+        for (const m of list) {
+            let sel = 0, occ = 0, urg = 0
+            const tags = m.tags ?? []
+            for (const t of tags) {
+                const bit = 1 << ((t.index ?? 1) - 1)
+                if (t.is_active) sel |= bit
+                if ((t.client_count ?? 0) > 0) occ |= bit
+                if (t.is_urgent) urg |= bit
+            }
+            const li = layouts.findIndex(l => l.symbol === (m.layout_symbol ?? "T"))
+            next[m.name ?? ""] = {
+                seltags: sel, occtags: occ, urgtags: urg,
+                tagCount: tags.length || 9,
+                title: m.active_client?.title ?? "",
+                layoutIndex: li >= 0 ? li : 0
+            }
         }
-        tagCount = tags.length || 9
-        seltags = sel
-        occtags = occ
-        urgtags = urg
-        title = m.active_client?.title ?? ""
-        const li = layouts.findIndex(l => l.symbol === (m.layout_symbol ?? "T"))
-        if (li >= 0) layoutIndex = li
+        mons = next
+        const f = list.find(x => x.active) ?? list[0]
+        monitor = f.name ?? ""
+        const st = next[monitor]
+        tagCount = st.tagCount
+        seltags = st.seltags
+        occtags = st.occtags
+        urgtags = st.urgtags
+        title = st.title
+        layoutIndex = st.layoutIndex
     }
 
     // --- which apps sit on which tag (the Tags strip's icons) ---
     // mmsg streams every client change; grouped per tag, one entry per app
     // with a count. Runs only while the toggle is on: off, nothing runs.
 
-    property var tagApps: ({})   // tag index -> [{appid, icon, count}]
+    property var tagApps: ({})   // output name -> tag index -> [{appid, icon, count}]
     property var _iconCache: ({})
     function appIcon(appid) {
         if (_iconCache[appid] !== undefined) return _iconCache[appid]
@@ -246,10 +263,12 @@ Singleton {
     function parseClients(line) {
         let j
         try { j = JSON.parse(line) } catch (e) { return }
-        const perTag = {}
+        const perMon = {}
         for (const c of j.clients ?? []) {
             if (c.is_scratchpad || c.is_namedscratchpad) continue
-            if (c.monitor && root.monitor && c.monitor !== root.monitor) continue
+            const mon = c.monitor ?? ""
+            if (!perMon[mon]) perMon[mon] = {}
+            const perTag = perMon[mon]
             for (const t of c.tags ?? []) {
                 const i = t - 1
                 if (!perTag[i]) perTag[i] = []
@@ -258,15 +277,30 @@ Singleton {
                 else perTag[i].push({ appid: c.appid, icon: appIcon(c.appid), count: 1 })
             }
         }
-        tagApps = perTag
+        tagApps = perMon
     }
 
     // --- actions ---
 
-    function viewTag(i) { dispatch("view," + (i + 1)) }
+    // A bar acts on its own output. When that is not the focused one, mango
+    // has cross-monitor verbs for tags; for the rest, focus it first (in
+    // one shell so the two calls stay in order).
+    function elsewhere(mon) { return mon !== undefined && mon !== "" && mon !== monitor }
+    function dispatchOn(mon, cmd) {
+        if (!elsewhere(mon)) { dispatch(cmd); return }
+        Quickshell.execDetached(["sh", "-c",
+            '"$0" dispatch "focusmon,$1" && "$0" dispatch "$2"', ipc, mon, cmd])
+    }
+    function viewTag(i, mon) {
+        dispatch(elsewhere(mon) ? "viewcrossmon," + (i + 1) + "," + mon : "view," + (i + 1))
+    }
     function toggleViewTag(i) { dispatch("toggleview," + (i + 1)) }
-    function sendToTag(i) { dispatch("tag," + (i + 1)) }
-    function cycleTag(dir) { dispatch(dir > 0 ? "viewtoright_have_client" : "viewtoleft_have_client") }
+    function sendToTag(i, mon) {
+        dispatch(elsewhere(mon) ? "tagcrossmon," + (i + 1) + "," + mon : "tag," + (i + 1))
+    }
+    function cycleTag(dir, mon) {
+        dispatchOn(mon, dir > 0 ? "viewtoright_have_client" : "viewtoleft_have_client")
+    }
 
     function logout() { dispatch("quit") }
     function reloadConfig() { Quickshell.execDetached([Theme.configDir + "/scripts/mango-reload"]) }

@@ -42,6 +42,21 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell-popup"
     WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
+    // `qs ipc call <name> toggle`: BarIpc passes the call to every screen's
+    // copy of this popup; the one on the focused output answers. Popups
+    // with more verbs than toggle replace ipc().
+    property var ipcNames: []
+    readonly property bool onFocusedOutput: !screen || Wm.monitor === "" || screen.name === Wm.monitor
+    function ipc(fn, arg) { if (fn === "toggle") visible = !visible }
+    Connections {
+        target: BarIpc
+        enabled: root.ipcNames.length > 0
+        function onCall(target, fn, arg) {
+            if (root.ipcNames.indexOf(target) >= 0 && root.onFocusedOutput)
+                root.ipc(fn, arg)
+        }
+    }
+
     // where the anchor sits on its own output. mapToGlobal answers in the
     // layout's coordinates, which include the output's position: with a
     // second monitor to the left, everything landed that monitor's width

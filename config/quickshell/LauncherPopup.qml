@@ -22,6 +22,7 @@ import Quickshell.Widgets
 // through QS_ICON_THEME at start.
 Popout {
     id: root
+    ipcNames: ["launcher"]
 
     property string query: ""
     property int chip: 0                 // index into chips
@@ -104,12 +105,6 @@ Popout {
     cardHeight: Math.min(header.height + 12 + Math.ceil(Math.max(apps.length, 1) / columns) * cellH
                          + 12 + footer.height + 2 * cardPadding,
                          fitHeight * 0.85)
-
-    // scriptable: qs -p ~/.config/mango/quickshell ipc call launcher toggle
-    IpcHandler {
-        target: "launcher"
-        function toggle(): void { root.visible = !root.visible }
-    }
 
     onVisibleChanged: {
         if (!visible)
