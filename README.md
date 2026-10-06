@@ -133,6 +133,7 @@ Everything else is stock Debian:
 | `build-essential`             | Compiler toolchain, as in the other setups (nothing here builds from source, but a desktop should be able to) |
 | `kitty`                       | Terminal (via butterscripts)         |
 | `geany`                       | Editor (via butterscripts): `Super + E`, and editing a bind from the keybinds viewer |
+| `loupe`                       | Image viewer; follows the wallpaper theme like the GTK3 apps do |
 | `thunar` + plugins            | File manager                         |
 | `pipewire`                    | Audio                                |
 | `nwg-look`                    | GTK configurator                     |
