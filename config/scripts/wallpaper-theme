@@ -5,7 +5,7 @@
 # (Canvas histogram) and passes the derived palette in.
 #
 # This is the single theming system: the wallpaper picker dictates every
-# color (bar, rofi, dunst, kitty, GTK, mango borders) and the wallpaper itself (awww).
+# color (bar, rofi, dunst, kitty, qimgv, GTK, mango borders) and the wallpaper itself (awww).
 #
 # usage: wallpaper-theme <image> <bg> <altbg> <fg> <border> <primary> <secondary> <alert> <disabled> <ansi0..15>
 
@@ -163,6 +163,28 @@ return {
     ansi = { "$1", "$2", "$3", "$4", "$5", "$6", "$7", "$8",
              "$9", "${10}", "${11}", "${12}", "${13}", "${14}", "${15}", "${16}" },
 }
+EOF
+fi
+
+# 5c. qimgv — it paints itself from ~/.config/qimgv/theme.conf instead of
+#     the Qt or GTK theme, so it gets the palette directly. Only when it is
+#     installed; read at start, so an open window keeps its colors.
+if command -v qimgv >/dev/null 2>&1 && mkdir -p "$HOME/.config/qimgv"; then
+    cat > "$HOME/.config/qimgv/theme.conf" <<EOF
+[Colors]
+accent=$PRIMARY
+background=$BG
+background_fullscreen=$BG
+folderview=$BG
+folderview_topbar=$ALTBG
+icons=$SECONDARY
+overlay=$ALTBG
+overlay_text=$FG
+scrollbar=$DISABLED
+text=$FG
+tid=-1
+widget=$ALTBG
+widget_border=$BORDER
 EOF
 fi
 
