@@ -69,6 +69,38 @@ Virtual machines: it runs, and the installer switches to a software cursor
 so the pointer isn't upside down under virtio-gpu, but blur and animations
 will crawl without a real GPU. Not a supported target.
 
+### Updating
+
+```bash
+cd mangowc-setup
+git pull
+./install.sh
+```
+
+The installer asks before touching an existing `~/.config/mango`: say
+**yes** to the backup and it moves the old folder aside as
+`~/.config/mango.bak.<timestamp>`, then copies the new one in and installs
+any packages that are new since last time. Nothing of yours is lost, but
+two kinds of things live in that folder and have to be carried over by
+hand:
+
+- **Your edits to `config.conf`** — `monitorrule` lines, keybinds you
+  changed, the wallpaper `exec-once` line. Diff the two files and copy
+  across what's yours: `diff ~/.config/mango.bak.*/config.conf ~/.config/mango/config.conf`
+- **Settings the bar keeps in small files** — kept monitor layouts, gaps,
+  effects, bar size, lock style, weather location. One line brings them
+  back:
+
+```bash
+B=$(ls -d ~/.config/mango.bak.* | tail -1)
+cp -n "$B"/{displays.conf,mango-effects,mango-gaps,bar-height,bar-scale,popup-scale,lock-style,lock-idle,tag-icons,weather-location,weather-units,launcher-history} ~/.config/mango/ 2>/dev/null
+```
+
+Then pick your wallpaper again from the bar's wallpaper picker, which
+regenerates the colour theme, and reload with `Super+Shift+R`. When a
+pull changed only config, `./install.sh --only-config` does the same
+without the package steps. Delete the backup folder once you're happy.
+
 ---
 
 ## 📦 What It Installs
@@ -293,11 +325,19 @@ still shows you which window is live. The opacity slider needs mangowc
 
 Nothing to configure for most setups: mango picks each monitor's preferred
 mode (normally its highest refresh rate) at scale 1. When you do need
-more, one `monitorrule` line per output in `config.conf` sets resolution,
-refresh, position, fractional scale and adaptive sync — two commented
-templates are waiting in the `outputs` section, and `wlr-randr` lists the
-names and modes to fill in. Tearing is allowed for fullscreen clients that
-ask for it (games), nothing else.
+more, open **Displays** from the command menu (or the launcher's Displays
+action): resolution, refresh rate, scale and rotation per monitor, drag
+to arrange them, with a 15-second trial before a change is kept. What
+you keep is remembered for that set of monitors and comes back at login
+and when they're plugged in. The hand-edited route still works too: one
+`monitorrule` line per output in `config.conf` sets resolution, refresh,
+position, fractional scale and adaptive sync — two commented templates
+are waiting in the `outputs` section, and `wlr-randr` lists the names and
+modes to fill in. Tearing is allowed for fullscreen clients that ask for
+it (games), nothing else.
+
+Every monitor gets its own bar, showing its own tags and title; a popup
+opened from the keyboard appears on the monitor that has focus.
 
 ---
 
