@@ -22,7 +22,16 @@ Keputusan yang sudah diambil dan jangan diubah di tengah jalan:
 
 | # | Keputusan |
 |---|---|
-| 1 | Devuan di `sdb` (shrink NTFS → ±50G ext4 untuk `/`). `sda`/Fedora tidak disentuh |
+| 1 | Devuan di `sdb` (shrink NTFS → ±50G ext4 untuk `/`). `sda`/Fedora tidak disentuh.
+Catatan: `sdb` adalah **HDD Hitachi 750GB 5400rpm** (bukan SSD), jadi Devuan
+boot + buka aplikasi lebih lambat daripada Fedora di SSD. Ini harga dari opsi
+aman. Alternatif cepat (berisiko): shrink `sda3` btrfs dan taruh `/` Devuan
+±40G di SSD — hanya bila kamu nyaman resize btrfs dari Fedora live |
+
+> Jika suatu saat Devuan terasa lambat di HDD dan kamu ingin pindah ke SSD,
+> caranya: clone partisi `/` ke ruang baru di `sda`, update UUID di
+> `/etc/fstab` Devuan + entry rEFInd, lalu `efibootmgr` ulang. Jangan
+> menghapus partisi lama sebelum yang baru terbukti boot.
 | 2 | Devuan **Excalibur** netinstall **+ firmware non-free**, init **runit**, tasksel hanya *Standard system utilities* |
 | 3 | Bootloader utama **rEFInd** (auto-scan kernel). GRUB Fedora + GRUB Devuan disimpan sebagai fallback |
 | 4 | MangoWC dari repo ini (port Devuan), BUKAN script upstream mentah (butuh systemd) |
