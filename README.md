@@ -10,6 +10,10 @@ A MangoWC rice script for Debian 13 (trixie).
 One script installs the compositor, the bar, and everything in between, drops
 in the config, and you're tiling — with animations — on plain Debian stable.
 
+> **Devuan port:** this fork accepts Devuan Excalibur (no systemd) — see
+> [DEVUAN.md](DEVUAN.md) for the runit/sysvinit adaptations (elogind/seatd,
+> per-init service handling, greetd recommendation).
+
 > Part of the [JustAGuy Linux](https://justaguy.dev/drew) window manager collection — installable standalone or via [butterknife](https://justaguy.dev/drew/butterknife), the installer for [Butterbian](https://butterbian.org).
 
 ![MangoWC Desktop](screenshots/desktop.png)

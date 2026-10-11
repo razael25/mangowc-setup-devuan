@@ -51,20 +51,91 @@ warn() { echo -e "${YELLOW}WARNING: $*${NC}" >&2; }
 msg() { echo -e "${CYAN}$*${NC}"; }
 
 
-# Package names target Debian 13 (trixie); newer releases (forky/sid) and Ubuntu differ.
+# Package names target Debian 13 (trixie) or its Devuan equivalent
+# (Excalibur); newer releases (forky/sid) and Ubuntu differ.
 # mangowc itself comes from butterrepo: it needs wlroots 0.19 + scenefx 0.4, which
 # trixie does not ship, and butterrepo carries all three as .debs.
+IS_DEVUAN=false
 if [ "$ONLY_CONFIG" = false ]; then
     . /etc/os-release 2>/dev/null || die "Cannot read /etc/os-release to verify OS"
     case " $ID ${ID_LIKE:-} " in
         *" ubuntu "*) die "Unsupported OS: ${PRETTY_NAME:-unknown}. Ubuntu-based systems are not supported." ;;
+        *" devuan "*) IS_DEVUAN=true ;;
     esac
+    # Devuan ships /etc/devuan_version alongside /etc/debian_version
+    [ -f /etc/devuan_version ] && IS_DEVUAN=true
     DEBIAN_BASE=$(cat /etc/debian_version 2>/dev/null || true)
     case "$DEBIAN_BASE" in
         13|13.*) ;;
-        *) die "Unsupported OS: ${PRETTY_NAME:-unknown}. This installer requires a Debian 13 (trixie) base (found: ${DEBIAN_BASE:-no /etc/debian_version})." ;;
+        *) die "Unsupported OS: ${PRETTY_NAME:-unknown}. This installer requires a Debian 13 (trixie) base or Devuan Excalibur (found: ${DEBIAN_BASE:-no /etc/debian_version})." ;;
     esac
 fi
+
+# Init detection (Devuan has no systemd by default).
+# INIT is one of: systemd, runit, sysvinit, unknown
+detect_init() {
+    if [ -d /run/systemd/system ]; then
+        echo systemd
+    elif [ -d /run/runit ] && command -v sv >/dev/null 2>&1; then
+        echo runit
+    elif [ -f /etc/inittab ] || command -v update-rc.d >/dev/null 2>&1; then
+        echo sysvinit
+    else
+        echo unknown
+    fi
+}
+INIT=$(detect_init)
+
+# Portable display-manager check (no systemctl on Devuan).
+dm_active() {
+    if [ "$INIT" = systemd ] && command -v systemctl >/dev/null 2>&1; then
+        [ "$(systemctl is-active display-manager 2>/dev/null)" = active ]
+        return $?
+    fi
+    # runit / sysvinit: a DM owns the seat if X or a greeter is running
+    pgrep -x -u root "lightdm|sddm|gdm|gdm3|greetd|ly|xdm|slim" >/dev/null 2>&1
+}
+
+# Portable service enable: systemd unit name -> per-init equivalent.
+enable_service() {
+    case "$INIT" in
+        systemd)
+            sudo systemctl enable "$1" 2>/dev/null || warn "Could not enable $1 via systemctl"
+            ;;
+        runit)
+            if [ -d "/etc/sv/$1" ]; then
+                sudo ln -sfn "/etc/sv/$1" /run/runit/service/ \
+                    && msg "Enabled $1 (runit)" \
+                    || warn "Could not enable $1 via runit"
+            else
+                warn "No runit service dir /etc/sv/$1 - skipping"
+            fi
+            ;;
+        sysvinit|*)
+            if command -v update-rc.d >/dev/null 2>&1; then
+                sudo update-rc.d "$1" defaults >/dev/null 2>&1 \
+                    || warn "Could not enable $1 via update-rc.d"
+            else
+                warn "Cannot enable $1: unknown init ($INIT)"
+            fi
+            ;;
+    esac
+}
+
+# Portable virt detection (systemd-detect-virt exists only on systemd).
+in_vm() {
+    if command -v systemd-detect-virt >/dev/null 2>&1 && systemd-detect-virt -q 2>/dev/null; then
+        systemd-detect-virt
+        return 0
+    fi
+    # fallback: hypervisor flag / DMI vendor
+    if grep -qi hypervisor /proc/cpuinfo 2>/dev/null \
+        || grep -qiE "qemu|kvm|vmware|virtualbox|xen" /sys/class/dmi/id/sys_vendor 2>/dev/null; then
+        echo "vm(fallback-detect)"
+        return 0
+    fi
+    return 1
+}
 
 # Banner
 clear
@@ -81,9 +152,12 @@ echo
 [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
 
 # Update system
-# A machine with no login screen yet (a minimal Debian) needs a reboot at
+# A machine with no login screen yet (a minimal install) needs a reboot at
 # the end, not a logout: remembered now, before one gets installed
-DM_AT_START=$(systemctl is-active display-manager 2>/dev/null || true)
+if dm_active; then DM_AT_START=active; else DM_AT_START=inactive; fi
+if [ "$IS_DEVUAN" = true ]; then
+    msg "Devuan detected (init: $INIT) - using $INIT service handling instead of systemd."
+fi
 
 if [ "$ONLY_CONFIG" = false ]; then
     msg "Updating system..."
@@ -153,6 +227,14 @@ PACKAGES_FONTS=(
     fonts-recommended fonts-font-awesome fonts-noto-color-emoji
 )
 
+# Seat management on non-systemd (Devuan): mango talks to the seat through
+# libseat. With elogind + a display manager, elogind owns the seat.
+# Started from a TTY with no (e)logind, seatd must own it instead.
+# Both are installed; the enable logic below picks the right one.
+PACKAGES_SEAT=(
+    elogind seatd
+)
+
 # Install packages by group
 if [ "$ONLY_CONFIG" = false ]; then
     msg "Installing MangoWC (from butterrepo)..."
@@ -181,8 +263,15 @@ if [ "$ONLY_CONFIG" = false ]; then
     msg "Installing fonts..."
     sudo apt-get install -y "${PACKAGES_FONTS[@]}" || die "Failed to install fonts"
 
-    # Enable services
-    sudo systemctl enable avahi-daemon acpid
+    # Enable services (per-init abstraction, see detect_init/enable_service)
+    enable_service avahi-daemon
+    enable_service acpid
+
+    if [ "$IS_DEVUAN" = true ]; then
+        msg "Installing seat management (elogind + seatd) for non-systemd..."
+        sudo apt-get install -y "${PACKAGES_SEAT[@]}" || warn "Seat packages failed - install elogind/seatd manually"
+        enable_service elogind
+    fi
 
     # GPU access. scenefx (mango's renderer) opens the render node directly at
     # startup and has no fallback if that fails. logind normally grants the
@@ -194,13 +283,40 @@ if [ "$ONLY_CONFIG" = false ]; then
     fi
 
     # Seat management. mango talks to the seat through libseat, which prefers
-    # a running seatd over logind. With a display manager (lightdm) the seat
-    # already belongs to logind, and two seat managers fighting over the GPU
-    # leaves mango unable to become DRM master (blank session, then a hung
-    # greeter). Nothing here needs seatd; make sure it isn't running.
-    if systemctl is-active --quiet seatd 2>/dev/null; then
-        warn "seatd is running alongside logind — disabling it (mango uses logind for the seat)"
-        sudo systemctl disable --now seatd
+    # a running seatd over (e)logind. With a display manager (lightdm/greetd)
+    # the seat already belongs to (e)logind, and two seat managers fighting
+    # over the GPU leaves mango unable to become DRM master (blank session,
+    # then a hung greeter). Nothing here needs seatd in that case; make sure
+    # it isn't running. With NO display manager and NO (e)logind (plain TTY
+    # start on runit/sysvinit), seatd is required instead - leave it enabled.
+    login_seat_active() {
+        if [ "$INIT" = systemd ] && command -v loginctl >/dev/null 2>&1; then
+            loginctl show-seat seat0 >/dev/null 2>&1 && return 0
+        fi
+        pgrep -x elogind-daemon >/dev/null 2>&1 && return 0
+        pgrep -x systemd-logind >/dev/null 2>&1 && return 0
+        [ -e /run/elogind/elogind.pid ] 2>/dev/null && return 0
+        [ -d /run/systemd/seats ] 2>/dev/null && return 0
+        return 1
+    }
+    seatd_running() {
+        pgrep -x seatd >/dev/null 2>&1
+    }
+    if seatd_running && { dm_active || login_seat_active; }; then
+        warn "seatd is running alongside (e)logind/a display manager - disabling it (mango uses (e)logind for the seat)"
+        case "$INIT" in
+            systemd) sudo systemctl disable --now seatd 2>/dev/null || true ;;
+            runit) sudo rm -f /run/runit/service/seatd; sudo sv stop seatd 2>/dev/null || true ;;
+            *) sudo service seatd stop 2>/dev/null || true; sudo update-rc.d seatd disable 2>/dev/null || true ;;
+        esac
+    elif ! seatd_running && ! dm_active && ! login_seat_active; then
+        msg "No display manager and no (e)logind detected (TTY start) - enabling seatd (required for DRM access)."
+        case "$INIT" in
+            systemd) sudo systemctl enable --now seatd 2>/dev/null || true ;;
+            runit) sudo ln -sfn /etc/sv/seatd /run/runit/service/ 2>/dev/null || warn "Enable seatd manually: sudo ln -s /etc/sv/seatd /run/runit/service/" ;;
+            *) sudo update-rc.d seatd defaults 2>/dev/null || true; sudo service seatd start 2>/dev/null || true ;;
+        esac
+        msg "Add yourself to the seat group if it exists: sudo usermod -aG seat \"\$USER\""
     fi
 else
     msg "Skipping package installation (--only-config mode)"
@@ -246,8 +362,8 @@ fi
 # Inside a VM, virtio-gpu renders the hardware cursor upside down or not at
 # all. Switch mango to a software cursor via the session env file (the line
 # is shipped commented out). Not a supported target, just not broken.
-if systemd-detect-virt -q 2>/dev/null; then
-    msg "Virtual machine detected ($(systemd-detect-virt)) - enabling software cursor"
+if VIRT=$(in_vm); then
+    msg "Virtual machine detected ($VIRT) - enabling software cursor"
     sed -i 's|^#WLR_NO_HARDWARE_CURSORS=1$|WLR_NO_HARDWARE_CURSORS=1|' "$CONFIG_DIR/env"
 fi
 
@@ -313,6 +429,13 @@ if [ "$ONLY_CONFIG" = false ]; then
     fi
 
     msg "Downloading display manager installer..."
+    if [ "$IS_DEVUAN" = true ]; then
+        warn "Devuan detected: the default lightdm installer assumes systemd."
+        echo "  Recommended on Devuan (runit/sysvinit): greetd + elogind instead:"
+        echo "    sudo apt-get install -y greetd elogind"
+        echo "    (greetd config: /etc/greetd/config.toml, command = \"mango\" via mango-session)"
+        echo "  Continuing with the stock installer anyway - answer 'n'/skip if it fails."
+    fi
     wget -O "$TEMP_DIR/install_lightdm.sh" "https://justaguy.dev/drew/butterscripts/raw/branch/main/system/install_lightdm.sh"
     chmod +x "$TEMP_DIR/install_lightdm.sh"
     msg "Running display manager installer..."
