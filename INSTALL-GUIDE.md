@@ -22,16 +22,12 @@ Keputusan yang sudah diambil dan jangan diubah di tengah jalan:
 
 | # | Keputusan |
 |---|---|
-| 1 | Devuan di `sdb` (shrink NTFS → ±50G ext4 untuk `/`). `sda`/Fedora tidak disentuh.
-Catatan: `sdb` adalah **HDD Hitachi 750GB 5400rpm** (bukan SSD), jadi Devuan
-boot + buka aplikasi lebih lambat daripada Fedora di SSD. Ini harga dari opsi
-aman. Alternatif cepat (berisiko): shrink `sda3` btrfs dan taruh `/` Devuan
-±40G di SSD — hanya bila kamu nyaman resize btrfs dari Fedora live |
+| 1 | Devuan di `sda` (SSD): shrink `sda3` btrfs Fedora dari belakang → unallocated ±40-50G → `/` Devuan ext4 di sana. `sdb` (HDD) tetap murni data, tidak dipakai. ESP `sda1` dan `/boot` `sda2` tidak disentuh |
 
-> Jika suatu saat Devuan terasa lambat di HDD dan kamu ingin pindah ke SSD,
-> caranya: clone partisi `/` ke ruang baru di `sda`, update UUID di
-> `/etc/fstab` Devuan + entry rEFInd, lalu `efibootmgr` ulang. Jangan
-> menghapus partisi lama sebelum yang baru terbukti boot.
+> Urutan shrink btrfs WAJIB: kecilkan **filesystem dulu** dari live USB,
+> baru kecilkan **partisi**. Jangan geser awal partisi (start sector tetap),
+> hanya potong dari belakang. Jangan resize dari Fedora yang sedang jalan
+> (unmount / boot live).
 | 2 | Devuan **Excalibur** netinstall **+ firmware non-free**, init **runit**, tasksel hanya *Standard system utilities* |
 | 3 | Bootloader utama **rEFInd** (auto-scan kernel). GRUB Fedora + GRUB Devuan disimpan sebagai fallback |
 | 4 | MangoWC dari repo ini (port Devuan), BUKAN script upstream mentah (butuh systemd) |
@@ -63,18 +59,29 @@ Masuk BIOS (`F2` saat power, tampil di layar internal):
 - Cari opsi CSM bila ada → **Enabled**
 - Simpan, matikan.
 
-## 3. Bebaskan ruang di sdb (dari Fedora live / GParted)
+## 3. Bebaskan ruang di sda / SSD (dari Fedora live, WAJIB live)
 
-1. Boot Fedora live, buka GParted → pilih `sdb`.
-2. Shrink partisi NTFS dari **belakang**, sisakan **unallocated ±50G** (minimum 30G).
-3. Jangan buat partisi dulu dari sini — biarkan unallocated, installer Devuan yang buat.
-4. Reboot ke USB Devuan.
+1. Boot USB Fedora live. Buka terminal, JANGAN mount otomatis — cek dulu:
+   `lsblk -f` (pastikan `sda3` btrfs Fedora, sisa ~222G).
+2. Kecilkan filesystem btrfs dulu (±40-50G untuk Devuan, sisakan napas Fedora):
+   ```bash
+   sudo mount /dev/sda3 /mnt
+   sudo btrfs filesystem resize -50G /mnt
+   sudo umount /mnt
+   ```
+   Gagal = berhenti, jangan lanjut ke partisi.
+3. Kecilkan partisi `sda3` dari **belakang** (GParted atau `parted resizepart`),
+   sehingga ada **unallocated ±40-50G di ujung `sda`**. Awal partisi jangan digeser.
+4. Verifikasi: `lsblk` menunjukkan `sda3` lebih kecil + ruang kosong.
+   `sda1`, `sda2`, dan `sdb` tidak berubah.
+5. Reboot ke USB Devuan.
 
 ## 4. Install Devuan (manual partitioning — BACA PELAN)
 
 1. Boot USB Devuan (UEFI mode). Pilih **Install**, hostname, user, password.
 2. Saat partisi pilih **Manual**:
-   - Klik ruang unallocated di `sdb` → buat partisi **ext4, mount `/`**, ±50G (atau seluruh unallocated).
+   - Klik ruang unallocated di `sda` (ujung disk, hasil §3) → buat partisi
+     **ext4, mount `/`**. Inilah `/` Devuan di SSD, berdampingan dengan Fedora.
    - **JANGAN** buat swap (Fedora pakai zram, Devuan ikut oke tanpa swap file).
    - Klik `sda1` (ESP 600M) → *Use as: EFI System Partition*, mount **`/boot/efi`**,
      pilihan **Format → TIDAK / NO**. Ini titik paling berbahaya: kalau ke-format,
