@@ -86,6 +86,17 @@ detect_init() {
 }
 INIT=$(detect_init)
 
+# Supervised service dir on runit. It differs per distro: /etc/service on
+# Devuan (runsvdir watches it), /run/runit/service on Artix, /var/service
+# on Void. Probe in that order; callers must use this, never a hardcoded path.
+detect_runit_svdir() {
+    for d in /etc/service /run/runit/service /var/service; do
+        [ -d "$d" ] && { echo "$d"; return 0; }
+    done
+    echo "/run/runit/service"
+}
+RUNIT_SVDIR=$(detect_runit_svdir)
+
 # Portable display-manager check (no systemctl on Devuan).
 dm_active() {
     if [ "$INIT" = systemd ] && command -v systemctl >/dev/null 2>&1; then
@@ -104,9 +115,9 @@ enable_service() {
             ;;
         runit)
             if [ -d "/etc/sv/$1" ]; then
-                sudo ln -sfn "/etc/sv/$1" /run/runit/service/ \
-                    && msg "Enabled $1 (runit)" \
-                    || warn "Could not enable $1 via runit"
+                sudo ln -sfn "/etc/sv/$1" "$RUNIT_SVDIR/" \
+                    && msg "Enabled $1 (runit via $RUNIT_SVDIR)" \
+                    || warn "Could not enable $1 via runit ($RUNIT_SVDIR)"
             else
                 warn "No runit service dir /etc/sv/$1 - skipping"
             fi
@@ -293,6 +304,7 @@ if [ "$ONLY_CONFIG" = false ]; then
         if [ "$INIT" = systemd ] && command -v loginctl >/dev/null 2>&1; then
             loginctl show-seat seat0 >/dev/null 2>&1 && return 0
         fi
+        pgrep -x elogind >/dev/null 2>&1 && return 0
         pgrep -x elogind-daemon >/dev/null 2>&1 && return 0
         pgrep -x systemd-logind >/dev/null 2>&1 && return 0
         [ -e /run/elogind/elogind.pid ] 2>/dev/null && return 0
@@ -306,14 +318,16 @@ if [ "$ONLY_CONFIG" = false ]; then
         warn "seatd is running alongside (e)logind/a display manager - disabling it (mango uses (e)logind for the seat)"
         case "$INIT" in
             systemd) sudo systemctl disable --now seatd 2>/dev/null || true ;;
-            runit) sudo rm -f /run/runit/service/seatd; sudo sv stop seatd 2>/dev/null || true ;;
+            # sv only stops runsv-supervised instances; the seatd postinst also
+            # starts a raw daemon (PPID 1, no supervise dir), so pkill it too.
+            runit) sudo rm -f "$RUNIT_SVDIR/seatd"; sudo sv stop seatd 2>/dev/null || true; sudo pkill -x seatd 2>/dev/null || true ;;
             *) sudo service seatd stop 2>/dev/null || true; sudo update-rc.d seatd disable 2>/dev/null || true ;;
         esac
     elif ! seatd_running && ! dm_active && ! login_seat_active; then
         msg "No display manager and no (e)logind detected (TTY start) - enabling seatd (required for DRM access)."
         case "$INIT" in
             systemd) sudo systemctl enable --now seatd 2>/dev/null || true ;;
-            runit) sudo ln -sfn /etc/sv/seatd /run/runit/service/ 2>/dev/null || warn "Enable seatd manually: sudo ln -s /etc/sv/seatd /run/runit/service/" ;;
+            runit) sudo ln -sfn /etc/sv/seatd "$RUNIT_SVDIR/" 2>/dev/null || warn "Enable seatd manually: sudo ln -s /etc/sv/seatd $RUNIT_SVDIR/" ;;
             *) sudo update-rc.d seatd defaults 2>/dev/null || true; sudo service seatd start 2>/dev/null || true ;;
         esac
         msg "Add yourself to the seat group if it exists: sudo usermod -aG seat \"\$USER\""
