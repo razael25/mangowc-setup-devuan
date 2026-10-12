@@ -10,7 +10,7 @@ chosen=$(printf '%s\n' "[Cancel]" "Logout" "Shutdown" "Reboot" | \
     rofi -dmenu -i -p "Power Menu" -line-padding 4 -hide-scrollbar -theme "$ROFI_THEME")
 case "$chosen" in
     "Logout") "$CONFIG_DIR/scripts/mango-ipc" dispatch quit ;;
-    "Shutdown") systemctl poweroff ;;
-    "Reboot") systemctl reboot ;;
+    "Shutdown") "$CONFIG_DIR/scripts/sysaction" poweroff ;;
+    "Reboot") "$CONFIG_DIR/scripts/sysaction" reboot ;;
     *) exit 0 ;;
 esac

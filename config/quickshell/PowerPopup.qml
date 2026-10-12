@@ -22,9 +22,9 @@ Popout {
         { key: "e", icon: "󰍃", label: "Log out", confirm: "Log out?",
           run: () => Wm.logout() },
         { key: "r", icon: "󰜉", label: "Reboot", confirm: "Reboot?",
-          run: () => Quickshell.execDetached(["systemctl", "reboot"]) },
+          run: () => Quickshell.execDetached([Theme.configDir + "/scripts/sysaction", "reboot"]) },
         { key: "s", icon: "󰐥", label: "Shut down", confirm: "Shut down?",
-          run: () => Quickshell.execDetached(["systemctl", "poweroff"]) }
+          run: () => Quickshell.execDetached([Theme.configDir + "/scripts/sysaction", "poweroff"]) }
     ]
 
     centered: true

@@ -36,8 +36,9 @@ BarModule {
     }
 
     // polled on every open, all read back from the system so a bar
-    // restart can't desync the pills: keep-awake is a systemd-inhibit
-    // holder process, night light is a running wlsunset
+    // restart can't desync the pills: keep-awake is a marker sleeper
+    // (scripts/caffeine stops swayidle; no systemd-inhibit on runit),
+    // night light is a running wlsunset
     property string profile: "balanced"
     property bool caffeine: false
     property bool nightLight: false
@@ -353,11 +354,12 @@ BarModule {
                         { icon: "󰅶", name: "Keep awake",
                           state: root.caffeine ? "On" : "Off",
                           active: root.caffeine,
+                          // no systemd-inhibit on runit: scripts/caffeine stops
+                          // swayidle and parks a marker the state probe finds
                           run: () => {
                               root.caffeine = !root.caffeine
-                              Quickshell.execDetached(["sh", "-c", root.caffeine
-                                  ? "systemd-inhibit --what=idle --who=quickshell --why=quickshell-caffeine sleep infinity >/dev/null 2>&1 &"
-                                  : "pkill -f '[w]hy=quickshell-caffeine'"])
+                              Quickshell.execDetached([Theme.configDir + "/scripts/caffeine",
+                                                       root.caffeine ? "on" : "off"])
                           } },
                         { icon: "󰌾", name: "Lock on idle",
                           state: root.lockIdle ? "On" : "Off",

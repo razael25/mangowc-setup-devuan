@@ -1,0 +1,16 @@
+#!/bin/sh
+# caffeine — "Keep awake" without systemd. systemd-inhibit doesn't exist on
+# Devuan/runit, so instead of a logind idle inhibitor we stop swayidle
+# entirely (no idle timeout can fire: no screen-off, no idle lock) and park
+# a marker sleeper that the bar's state probe (pgrep '[w]hy=quickshell-caffeine')
+# looks for. Turning it off kills the marker and restarts swayidle with the
+# current lock-on-idle policy.
+C="$(dirname "$(dirname "$(readlink -f "$0")")")"
+case "$1" in
+    on) pkill -x swayidle 2>/dev/null
+        pkill -f '[w]hy=quickshell-caffeine' 2>/dev/null
+        bash -c 'exec -a "caffeine-why=quickshell-caffeine" sleep infinity' >/dev/null 2>&1 & ;;
+    off) pkill -f '[w]hy=quickshell-caffeine' 2>/dev/null
+        exec "$C/scripts/idle" ;;
+    *) echo "usage: $0 {on|off}" >&2; exit 1 ;;
+esac
