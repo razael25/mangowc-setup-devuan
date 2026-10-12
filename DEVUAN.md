@@ -15,11 +15,14 @@ the Devuan-compatible `install.sh` plus the notes below.
 |---|---|
 | Refuses anything but Debian 13 | Accepts Devuan Excalibur (`/etc/devuan_version`, `ID=devuan`, `debian_version` 13.x) |
 | `systemctl is-active display-manager` | Portable `dm_active()` (pgrep for lightdm/sddm/gdm/greetd/ly/…) |
-| `systemctl enable avahi-daemon acpid` | `enable_service()` → `systemctl` on systemd, `/run/runit/service` symlink on runit, `update-rc.d` on sysvinit |
-| `systemctl disable --now seatd` (always) | Conditional: seatd disabled only if (e)logind or a DM owns the seat; **enabled** for plain TTY start (required for DRM master without logind) |
-| Installs nothing for seats (logind assumed) | Installs `elogind` + `seatd` on Devuan |
+| `systemctl enable avahi-daemon acpid` | `enable_service()` → `systemctl` on systemd, symlink into probed `$RUNIT_SVDIR` on runit (`/etc/service` on Devuan, `/run/runit/service` on Artix, `/var/service` on Void — never hardcoded), `update-rc.d` on sysvinit |
+| `systemctl disable --now seatd` (always) | Conditional: seatd disabled only if (e)logind or a DM owns the seat; **enabled** for plain TTY start (required for DRM master without logind). runit branch also `pkill -x seatd`: the seatd postinst starts a raw daemon (PPID 1, no supervise dir) that `sv stop` cannot touch |
+| Installs nothing for seats (logind assumed) | Installs `elogind` + `seatd` on Devuan; elogind detected by real process name (`elogind`, not `elogind-daemon`) |
 | `systemd-detect-virt` for VM cursor fix | `in_vm()` with `/proc/cpuinfo` + DMI fallback |
 | lightdm installer assumed | Warns on Devuan, recommends `greetd + elogind` |
+| systemd user units (pipewire, portals) | `config.conf`: PipeWire stack started serialized (wireplumber waits for pipewire socket, bar last so volume binds real sinks); portals restarted portably (kill stale, respawn on demand) |
+| `systemctl reboot/poweroff` in power menu | `scripts/sysaction` (`loginctl` first, `systemctl` fallback) |
+| `systemd-inhibit` keep-awake | `scripts/caffeine` (stop swayidle + marker; no `systemd-inhibit` on runit) |
 
 ## Recommended Devuan setup (Asus X455LD / old Intel)
 
@@ -37,10 +40,11 @@ Afterwards:
 # seat/render groups (re-login after)
 sudo usermod -aG video,input,render,seat "$USER"
 
-# runit: enable what the installer may have missed
-sudo ln -s /etc/sv/elogind /run/runit/service/     # if using a display manager
+# runit: enable what the installer may have missed (Devuan watches
+# /etc/service, NOT /run/runit/service)
+sudo ln -s /etc/sv/elogind /etc/service/     # if using a display manager
 # or, for pure TTY start (no DM, no elogind):
-sudo ln -s /etc/sv/seatd /run/runit/service/
+sudo ln -s /etc/sv/seatd /etc/service/
 
 # display manager (pick ONE):
 sudo apt-get install -y greetd elogind   # recommended, systemd-free
@@ -61,8 +65,9 @@ seatd-run mango   # if seatd owns the seat
 - `mpd-mpris` hint in upstream README uses
   `systemctl --user enable --now`; on Devuan run it via the user service
   manager you use (or autostart it from `config.conf` `exec-once`).
-- `power-profiles-daemon` ships a systemd unit upstream; on runit it runs
-  as a plain daemon — start it from `config.conf` or a runit user service.
+- `power-profiles-daemon` ships a systemd unit upstream; on Devuan it runs
+  via its runit service (`/etc/service/power-profiles-daemon`), switchable
+  from the bar's command menu (Power profile tile).
 - butterrepo `.deb`s are built for trixie; they install cleanly on
   Excalibur (same library versions), but re-run `./install.sh` after every
   `git pull` so new pins are picked up.

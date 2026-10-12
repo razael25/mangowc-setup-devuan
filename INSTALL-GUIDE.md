@@ -117,22 +117,29 @@ GRUB keduanya tetap ada untuk darurat (F12 → `Fedora` / `debian`).
 
 ```bash
 # 6a. Grup hardware (lalu LOGOUT + LOGIN ulang)
-sudo usermod -aG video,input,render,seat "$USER"
+sudo usermod -aG video,input,render "$USER"
+# grup `seat` hanya untuk jalur seatd/TTY (§6b bawah); jalur elogind+greetd
+# tidak membutuhkannya.
 
 # 6b. Seat manager (runit) — pilih SALAH SATU sesuai cara login:
 #   Pakai display manager (disarankan) → elogind:
 sudo apt-get install -y elogind greetd
-sudo ln -s /etc/sv/elogind /run/runit/service/
-sudo ln -s /etc/sv/greetd /run/runit/service/
-#   (greetd config /etc/greetd/config.toml → command = "mango-session")
+sudo ln -s /etc/sv/elogind /etc/service/
+sudo ln -s /etc/sv/greetd /etc/service/
+#   (greetd tidak membawa service runit: buat /etc/sv/greetd/run manual,
+#   lihat log instalasi. /etc/greetd/config.toml → command = "mango-session")
 #   TANPA display manager (start dari TTY) → seatd:
 # sudo apt-get install -y seatd
-# sudo ln -s /etc/sv/seatd /run/runit/service/
+# sudo ln -s /etc/sv/seatd /etc/service/
+# (tambah grup seat hanya di jalur ini: sudo usermod -aG seat "$USER")
 # Aturan: JANGAN jalankan seatd + elogind/DM bersamaan (rebutan DRM master,
 # sesi blank 8 detik lalu greeter hang).
 
 # 6c. Samakan jam (hindari jam loncat antar OS):
 sudo apt-get install -y ntpsec  # atau pakai chrony; pastikan UTC di kedua OS
+# ntpsec TIDAK membawa service runit: buat /etc/sv/ntpsec/run manual
+# (ntpd -n -g ...) lalu ln ke /etc/service. Waspada /etc/init.d/ntpsec yang
+# meluncurkan ntpd daemon dan memblokir port 123 (kill dulu bila bentrok).
 ```
 
 ## 7. Install MangoWC (port Devuan, repo ini)
@@ -177,6 +184,9 @@ Setelah selesai: reboot (bila tadi belum ada DM) atau logout total (grup
 | Mango blank 8 detik lalu greeter hang | seatd + elogind/DM rebutan GPU | Matikan salah satu (lihat §6b) |
 | Mango gagal buka render node | user belum grup `render` / belum login ulang | `groups`, pastikan ada `render`, relogin |
 | Bar network offline padahal konek | interface di `/etc/network/interfaces` | Komentari baris `iface <dev>` itu, reboot (detail di output installer) |
+| Suara hilang / cuma "Dummy Output" | wireplumber start sebelum pipewire siap | Sudah diperbaiki di repo (`config.conf` rantai audio); `git pull && ./install.sh`, reboot |
+| Super+x reboot/shutdown diam | power menu memanggil `systemctl` | Sudah diperbaiki di repo (`scripts/sysaction` → loginctl); `git pull && ./install.sh`, reload bar |
+| Keep awake tidak berpengaruh | memakai `systemd-inhibit` yang tak ada | Sudah diperbaiki di repo (`scripts/caffeine`); `git pull && ./install.sh`, reload bar |
 | Kernel baru Devuan tidak muncul di GRUB Fedora | entry GRUB statis | Boot via rEFInd, atau `grub2-mkconfig` dari Fedora |
 | Layar HDMI tidak tampil di BIOS | Fast Boot on / kabel longgar | Matikan Fast Boot (§2), colok HDMI sebelum power |
 
