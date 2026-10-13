@@ -1,13 +1,19 @@
 #!/bin/sh
-# sysaction — reboot/poweroff portably: loginctl on runit/elogind systems,
-# systemctl where systemd exists. Used by the bar's power menu and the
-# rofi fallback in scripts/power.
+# sysaction — reboot/poweroff/suspend portably: loginctl on runit/elogind
+# systems, systemctl where systemd exists. Used by the bar's power menu
+# and the rofi fallback in scripts/power. Suspend also locks first (the
+# lock screen runs in the background, so sleep 2 lets it appear).
 case "$1" in
     reboot)   action=reboot ;;
     poweroff) action=poweroff ;;
     suspend)  action=suspend ;;
     *) echo "usage: $0 {reboot|poweroff|suspend}" >&2; exit 1 ;;
 esac
+if [ "$action" = suspend ]; then
+    D="$(dirname "$0")"
+    [ -x "$D/lock" ] && "$D/lock" >/dev/null 2>&1 &
+    sleep 2
+fi
 if command -v loginctl >/dev/null 2>&1; then
     exec loginctl "$action"
 elif command -v systemctl >/dev/null 2>&1; then
