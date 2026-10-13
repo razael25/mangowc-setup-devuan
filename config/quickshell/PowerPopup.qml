@@ -19,6 +19,8 @@ Popout {
           run: () => Quickshell.execDetached([Theme.configDir + "/scripts/lock"]) },
         { key: "o", icon: "󰌢", label: "Screen off",
           run: () => Quickshell.execDetached([Theme.configDir + "/scripts/screen-off"]) },
+        { key: "u", icon: "󰤄", label: "Suspend", confirm: "Suspend?",
+          run: () => Quickshell.execDetached([Theme.configDir + "/scripts/sysaction", "suspend"]) },
         { key: "e", icon: "󰍃", label: "Log out", confirm: "Log out?",
           run: () => Wm.logout() },
         { key: "r", icon: "󰜉", label: "Reboot", confirm: "Reboot?",

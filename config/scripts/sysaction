@@ -5,7 +5,8 @@
 case "$1" in
     reboot)   action=reboot ;;
     poweroff) action=poweroff ;;
-    *) echo "usage: $0 {reboot|poweroff}" >&2; exit 1 ;;
+    suspend)  action=suspend ;;
+    *) echo "usage: $0 {reboot|poweroff|suspend}" >&2; exit 1 ;;
 esac
 if command -v loginctl >/dev/null 2>&1; then
     exec loginctl "$action"
